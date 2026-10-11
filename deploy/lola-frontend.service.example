@@ -1,0 +1,17 @@
+[Unit]
+Description=Lola Sport Next.js demo
+After=network.target php8.4-fpm.service nginx.service
+[Service]
+Type=simple
+User=lola
+WorkingDirectory=/srv/lola/current/frontend
+Environment=NODE_ENV=production
+Environment=BACKEND_URL=http://127.0.0.1:8080
+Environment=NEXT_TELEMETRY_DISABLED=1
+ExecStart=/usr/bin/npm run start -- --port 3000
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+[Install]
+WantedBy=multi-user.target
