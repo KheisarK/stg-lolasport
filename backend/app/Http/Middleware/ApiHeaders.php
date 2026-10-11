@@ -1,0 +1,22 @@
+<?php
+
+namespace App\Http\Middleware;
+
+use Closure;
+use Illuminate\Http\Request;
+
+class ApiHeaders
+{
+    public function handle(Request $request, Closure $next)
+    {
+        if ($request->is('api/*')) {
+            $request->headers->set('Accept', 'application/json');
+        }
+        $response = $next($request);
+        $response->headers->set('Cache-Control', 'no-store, private');
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('Referrer-Policy', 'no-referrer');
+
+        return $response;
+    }
+}
