@@ -1,0 +1,32 @@
+import type { NextConfig } from "next";
+
+const config: NextConfig = {
+  poweredByHeader: false,
+  distDir: process.env.LOLA_NEXT_DIST || ".next",
+  experimental: { cpus: 2 },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${process.env.BACKEND_URL || "http://127.0.0.1:8000"}/api/:path*`,
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "Referrer-Policy", value: "no-referrer" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          {
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=()",
+          },
+        ],
+      },
+    ];
+  },
+};
+export default config;
