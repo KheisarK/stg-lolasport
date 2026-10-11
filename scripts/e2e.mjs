@@ -6,6 +6,7 @@ import { randomBytes } from "node:crypto";
 import { createServer } from "node:net";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { npmInvocation, stopService } from "./process.mjs";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const directory = await mkdtemp(path.join(tmpdir(), "lola-e2e-"));
 async function port() {
@@ -48,6 +49,7 @@ const php =
     ? "/workspace/lola-tools/bin/php"
     : "php");
 function run(command, args, cwd) {
+  if (command === "npm") [command, args] = npmInvocation(args, { env });
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, { cwd, env, stdio: "inherit" });
     child.on("error", reject);
@@ -57,6 +59,7 @@ function run(command, args, cwd) {
   });
 }
 function service(command, args, cwd) {
+  if (command === "npm") [command, args] = npmInvocation(args, { env });
   const child = spawn(command, args, {
     cwd,
     env,
@@ -84,12 +87,7 @@ async function ready(url, child) {
 }
 async function stop(child) {
   if (child.exitCode !== null) return;
-  try {
-    if (process.platform === "win32") child.kill("SIGTERM");
-    else process.kill(-child.pid, "SIGTERM");
-  } catch {
-    /* Exited. */
-  }
+  await stopService(child);
   for (let i = 0; i < 50 && child.exitCode === null; i++)
     await new Promise((resolve) => setTimeout(resolve, 100));
 }

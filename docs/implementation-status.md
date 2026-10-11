@@ -38,6 +38,14 @@ Pemeriksaan UI menemukan klik lapangan yang sudah terpilih dapat membuat form te
 
 Tangkapan layar desktop/ponsel diperiksa secara visual di lingkungan lokal; assertion browser memastikan tidak ada overflow horizontal pada halaman status dan admin. Ini bukan evaluasi perangkat nyata atau penilaian pengelola. Pengulangan setup memverifikasi APP_KEY, tarif dan jumlah booking/pembayaran yang sudah ada tetap dipertahankan.
 
+## Dukungan Windows dan PowerShell
+
+Perbaikan setelah percobaan pengguna Windows: `scripts/setup.ps1` tersedia tanpa WSL/Bash; `scripts/process.mjs` menjalankan npm melalui Node dan `npm-cli.js`, sehingga tidak memanggil batch `npm.cmd` secara langsung yang menyebabkan `spawn EINVAL`. Launcher menghentikan pohon proses Windows melalui taskkill. Setup memilih executable pertama pada PATH, menolak PHP di bawah 8.4 sebelum instalasi, dan mempertahankan konfigurasi/data yang sudah ada. Panduan PHP 8.4 terpisah dari XAMPP ada di `docs/windows.md`.
+
+Lima pengujian launcher lulus di cloud Linux, termasuk subprocess nyata dengan path spasi/backtick dan argumen literal. Setup dijalankan melalui PowerShell 7.5.4 pada Linux: sintaks valid, setup berhasil, pengulangan mempertahankan `.env`, tarif, booking, pembayaran dan akun. Skenario PHP 8.2 ditolak sebelum Composer dipanggil. Launcher development dinyalakan melalui helper, health/empat lapangan diperiksa, lalu SIGINT menghentikan kedua layanan dan melepas port. Rangkaian backend 19/158, lint/typecheck/build, dua skenario browser produksi dan persistensi diulang dan lulus.
+
+CI Windows dengan PHP 8.4/Node 22, setup PowerShell dan E2E telah disiapkan. **Hasil Windows asli, Windows PowerShell 5.1, taskkill, dan CI remote belum diverifikasi**; hasil simulasi Windows pada Linux tidak menggantikan percobaan laptop pengguna.
+
 ## Batas bukti dan pekerjaan lanjutan
 
 Belum ada deployment/URL staging terverifikasi, hasil CI remote, review independen, UAT pengelola, pengujian handphone nyata/Safari, evaluasi beban bisnis, pemulihan backup staging atau pengukuran dampak operasional. Contoh Nginx/systemd perlu disesuaikan dan diuji pada host yang disediakan.

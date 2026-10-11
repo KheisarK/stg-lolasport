@@ -17,13 +17,21 @@ Browser → Next.js → API Laravel → SQLite. Browser menggunakan satu origin;
 
 ## Instalasi lokal
 
-Prasyarat: Bash, Node.js 22 atau 24, PHP 8.4+ yang kompatibel dengan lockfile, Composer 2, serta ekstensi PHP ctype, curl, dom, fileinfo, mbstring, pdo_sqlite, sqlite3, tokenizer, xml, xmlreader, xmlwriter, zip. Fungsi `proc_open` harus tersedia untuk pengujian proses terpisah; gunakan Linux/macOS atau WSL untuk rangkaian lengkap. Tidak diperlukan gateway, Redis, queue worker, atau database eksternal.
+Prasyarat: Node.js 22 atau 24, PHP 8.4+ yang kompatibel dengan lockfile, Composer 2, serta ekstensi PHP ctype, curl, dom, fileinfo, mbstring, pdo_sqlite, sqlite3, tokenizer, xml, xmlreader, xmlwriter, zip. Setup memakai Bash pada Linux/macOS atau PowerShell pada Windows. Fungsi `proc_open` harus tersedia untuk pengujian proses terpisah. Tidak diperlukan gateway, Redis, queue worker, atau database eksternal.
 
 Dari root repository:
 
 ```bash
 bash scripts/setup.sh
 ```
+
+Windows PowerShell, tanpa WSL:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+Lihat [panduan Windows](docs/windows.md) untuk memilih PHP 8.4 jika terminal masih menggunakan PHP 8.2 dari XAMPP, termasuk konfigurasi ekstensi dan penanganan error awal.
 
 Script memakai lockfile, membuat `.env` hanya jika belum ada, membuat APP_KEY hanya jika kosong, menjalankan migration yang belum diterapkan, dan mengisi lapangan contoh tanpa menimpa tarif yang sudah ada. Script tidak mereset database dan tidak membuat akun dengan password bawaan. Pengguna cloud di workspace ini dapat memakai runtime yang sudah disiapkan pada `/workspace/lola-tools/bin`; script mendeteksinya otomatis.
 
@@ -82,5 +90,6 @@ CI disiapkan di `.github/workflows/ci.yml`. Hasil lokal, status CI remote, stagi
 - [Status implementasi](docs/implementation-status.md): bukti pemeriksaan dan pekerjaan tersisa.
 - [Panduan belajar](docs/learning-guide.md): hubungan komponen, tahapan dan latihan.
 - [Panduan staging](docs/staging.md): hosting Laravel/Next.js, penyimpanan persisten, deployment, backup dan pemulihan.
+- [Panduan Windows/VS Code](docs/windows.md): setup PowerShell, pemilihan PHP, dan menjalankan aplikasi tanpa WSL.
 
 Belum ada transaksi nyata, reschedule, refund, koreksi pembayaran, peran pemilik terpisah, ekspor laporan, maupun persetujuan penggunaan bisnis. Evaluasi pengguna dan keputusan rilis memerlukan kelompok/pengelola yang bertanggung jawab.

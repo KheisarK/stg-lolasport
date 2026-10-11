@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Artisan;
 require __DIR__.'/../../vendor/autoload.php';
 $app = require __DIR__.'/../../bootstrap/app.php';
 $app->make(Kernel::class)->bootstrap();
-$directory = $argv[1] ?? '';
-if (! str_starts_with(realpath($directory) ?: '', sys_get_temp_dir().'/lola-e2e-') || ! is_file($directory.'/test.sqlite') || filesize($directory.'/test.sqlite') !== 0) {
+$directory = realpath($argv[1] ?? '') ?: '';
+if (dirname($directory) !== realpath(sys_get_temp_dir()) || ! str_starts_with(basename($directory), 'lola-e2e-') || ! is_file($directory.'/test.sqlite') || filesize($directory.'/test.sqlite') !== 0 || realpath(config('database.connections.sqlite.database')) !== realpath($directory.'/test.sqlite')) {
     throw new RuntimeException('Requires a new isolated lola-e2e temporary database.');
 }
 Artisan::call('migrate', ['--force' => true]);
