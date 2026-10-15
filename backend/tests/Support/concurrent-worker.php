@@ -1,6 +1,7 @@
 <?php
 
 use App\Services\BookingService;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -13,6 +14,9 @@ $app->make(Kernel::class)->bootstrap();
 $payload = json_decode(file_get_contents($payloadPath), true, 512, JSON_THROW_ON_ERROR);
 config(['database.connections.sqlite.database' => $payload['database']]);
 DB::purge('sqlite');
+if (isset($payload['now'])) {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse($payload['now']));
+}
 file_put_contents($payloadPath.'.ready'.$worker, 'ready');
 $deadline = microtime(true) + 15;
 while (! file_exists($payloadPath.'.go')) {
@@ -28,9 +32,11 @@ try {
         usleep(250000);
         $service = app(BookingService::class);
 
-        return $payload['mode'] === 'booking'
-            ? $service->create($payload['input'])
-            : $service->pay($payload['booking_id'], $payload['input'], $payload['actor']);
+        return match ($payload['mode']) {
+            'booking' => $service->create($payload['input']),
+            'start' => $service->start($payload['booking_id'], $payload['actor']),
+            default => $service->pay($payload['booking_id'], $payload['input'], $payload['actor']),
+        };
     }, 3);
     $output = ['status' => 200, 'replayed' => $result['replayed'] ?? null];
 } catch (ValidationException $e) {

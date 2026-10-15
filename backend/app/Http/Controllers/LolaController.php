@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\BookingService;
+use App\Support\BusinessClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -11,11 +12,11 @@ use Illuminate\Validation\ValidationException;
 
 class LolaController extends Controller
 {
-    public function __construct(private BookingService $bookings) {}
+    public function __construct(private BookingService $bookings, private BusinessClock $clock) {}
 
     public function courts()
     {
-        return response()->json(['courts' => DB::table('courts')->get(), 'rules' => config('lola'), 'demo' => true]);
+        return response()->json(['courts' => DB::table('courts')->get(), 'rules' => config('lola'), 'server_now' => $this->clock->now()->toIso8601String(), 'demo' => true]);
     }
 
     public function availability(Request $request)
@@ -43,7 +44,7 @@ class LolaController extends Controller
         abort_unless($id, 404, 'Tautan booking tidak valid.');
         $booking = $this->bookings->detail($id);
         // Internal actor identifiers are not needed by customers.
-        unset($booking['created_by'], $booking['cancelled_by']);
+        unset($booking['created_by'], $booking['cancelled_by'], $booking['started_by']);
         $booking['payments'] = array_map(function ($payment) {
             unset($payment->recorded_by);
 
@@ -98,6 +99,11 @@ class LolaController extends Controller
     public function cancel(Request $request, int $id)
     {
         return response()->json(['booking' => $this->bookings->cancel($id, $request->user()->id)]);
+    }
+
+    public function start(Request $request, int $id)
+    {
+        return response()->json($this->bookings->start($id, $request->user()->id));
     }
 
     public function report(Request $request)

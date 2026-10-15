@@ -8,6 +8,7 @@ fi
 command -v php >/dev/null
 command -v composer >/dev/null
 command -v node >/dev/null
+php "$LOLA_ROOT/scripts/check-runtime.php"
 cd "$LOLA_ROOT/backend"
 composer install --no-interaction --prefer-dist
 if [[ ! -f .env ]]; then cp .env.example .env; fi

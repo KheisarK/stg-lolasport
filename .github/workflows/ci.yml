@@ -13,7 +13,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, pdo_sqlite, sqlite3, dom, curl, xml, zip, pcntl
+          extensions: ctype, curl, dom, fileinfo, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, xmlreader, xmlwriter, zip, pcntl
           coverage: none
           tools: composer:v2
       - uses: actions/setup-node@v4
@@ -42,7 +42,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: mbstring, pdo_sqlite, sqlite3, dom, curl, xml, zip
+          extensions: ctype, curl, dom, fileinfo, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, xmlreader, xmlwriter, zip
           coverage: none
           tools: composer:v2
       - uses: actions/setup-node@v4
@@ -51,7 +51,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
-      - run: node --test scripts/tests/process.test.mjs
+      - run: node --test scripts/tests/process.test.mjs scripts/tests/runtime.test.mjs
       - run: php artisan test
         working-directory: backend
       - run: npm.cmd run lint

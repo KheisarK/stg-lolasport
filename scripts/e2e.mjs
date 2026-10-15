@@ -22,6 +22,10 @@ async function port() {
 const backendPort = await port(),
   frontendPort = await port();
 await writeFile(path.join(directory, "test.sqlite"), "");
+await writeFile(
+  path.join(directory, "clock.json"),
+  JSON.stringify({ now: "2026-10-16T02:00:00+00:00" }),
+);
 await mkdir(path.join(directory, "sessions"));
 await mkdir(path.join(directory, "cache"));
 const env = {
@@ -31,8 +35,12 @@ const env = {
   APP_DEBUG: "false",
   DB_DATABASE: path.join(directory, "test.sqlite"),
   DB_CONNECTION: "sqlite",
+  DB_URL: "",
+  APP_CONFIG_CACHE: path.join(directory, "config.php"),
+  APP_ROUTES_CACHE: path.join(directory, "routes.php"),
   SESSION_DRIVER: "file",
   SESSION_SECURE_COOKIE: "false",
+  SESSION_DOMAIN: "",
   SESSION_FILES: path.join(directory, "sessions"),
   CACHE_PATH: path.join(directory, "cache"),
   CACHE_STORE: "file",
@@ -100,11 +108,11 @@ try {
   let backend = service(
     php,
     [
-      "artisan",
-      "serve",
-      "--no-reload",
-      "--host=127.0.0.1",
-      `--port=${backendPort}`,
+      "-S",
+      `127.0.0.1:${backendPort}`,
+      "-t",
+      "public",
+      "tests/Support/browser-router.php",
     ],
     path.join(root, "backend"),
   );
@@ -129,11 +137,11 @@ try {
   backend = service(
     php,
     [
-      "artisan",
-      "serve",
-      "--no-reload",
-      "--host=127.0.0.1",
-      `--port=${backendPort}`,
+      "-S",
+      `127.0.0.1:${backendPort}`,
+      "-t",
+      "public",
+      "tests/Support/browser-router.php",
     ],
     path.join(root, "backend"),
   );

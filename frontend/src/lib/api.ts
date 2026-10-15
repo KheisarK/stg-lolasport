@@ -78,6 +78,10 @@ export const time = (value: string) =>
     minute: "2-digit",
     hour12: false,
   }).format(new Date(value));
+export const schedule = (start: string, end: string) =>
+  jakartaDate(0, Date.parse(start)) === jakartaDate(0, Date.parse(end))
+    ? `${dateTime(start)}–${time(end)} WIB`
+    : `${dateTime(start)}–${dateTime(end)} WIB (hari berikutnya)`;
 export function jakartaDate(offset = 0, reference = Date.now()) {
   const date = new Date(reference + offset * 86400000);
   return new Intl.DateTimeFormat("en-CA", {
@@ -106,7 +110,8 @@ export type Rules = {
   open_hour: number;
   close_hour: number;
   durations: number[];
-  dp_percent: number;
+  dp_amount: number;
+  full_payment_within_minutes: number;
   hold_minutes: number;
   advance_days: number;
 };
@@ -117,6 +122,12 @@ export type Payment = {
   paid_at: string;
   recorded_by?: number;
   reference?: string;
+  kind?: string | null;
+};
+export type PaymentChoice = {
+  kind: "dp" | "full" | "settlement";
+  label: string;
+  amount: number;
 };
 export type Booking = {
   id: number;
@@ -135,4 +146,9 @@ export type Booking = {
   status: string;
   payment_status: string;
   payments: Payment[];
+  payment_option: string;
+  payment_choices: PaymentChoice[];
+  started_at: string | null;
+  started_by?: number | null;
+  server_now: string;
 };

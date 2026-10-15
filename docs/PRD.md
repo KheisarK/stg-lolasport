@@ -2,12 +2,14 @@
 
 | Metadata | Nilai |
 | --- | --- |
-| Versi | 0.1 |
-| Tanggal penyusunan | 11 Oktober 2026 |
+| Versi | 0.2 — draft awal dengan addendum v2 |
+| Tanggal penyusunan | 11 Oktober 2026; addendum 16 Oktober 2026 WIB |
 | Status | Draft kebutuhan untuk ditinjau kelompok dan pengelola |
 | Arah solusi | Alternatif 1: reservasi melalui web, sementara menjadi pilihan yang diunggulkan kelompok |
 | Metode pengembangan | Waterfall, sesuai draft proposal kelompok |
-| Status implementasi | Belum diperiksa dalam penyusunan dokumen ini |
+| Status implementasi | Lihat `implementation-status.md`; hasil teknis tidak merupakan persetujuan kebutuhan |
+
+**Catatan versi:** bagian 1–16 mempertahankan isi draft awal sebagai konteks historis. Untuk kebutuhan pembaruan tarif/jam/DP/pelunasan/mulai bermain, gunakan addendum 17 dan `requirements-v2.md`; pertanyaan lama yang dilengkapi di sana tidak berarti masih tanpa informasi. Seluruh dokumen tetap perlu peninjauan.
 
 Dokumen ini menjadi bahan untuk menyepakati kebutuhan dan mencocokkannya dengan project yang sudah dikerjakan. Arah solusi, aturan yang diusulkan, dan kriteria penerimaan di bawah belum berarti telah disetujui pengelola. Fitur yang ditemukan dalam kode juga tidak otomatis menjadi kebutuhan yang disepakati.
 
@@ -252,3 +254,17 @@ Referensi ini membantu mengkaji pola rancangan; tidak menjadi bukti kebutuhan at
 | Versi | Perubahan | Status |
 | --- | --- | --- |
 | 0.1 | Draft awal berdasarkan S1–S3 dan referensi praktik; implementasi belum diperiksa | Menunggu peninjauan kelompok/pengelola dan pencocokan dengan repo |
+
+## 17. Addendum v2 — 16 Oktober 2026 WIB
+
+Pembaruan ini berasal dari informasi pembahasan Lola yang disampaikan pengguna dan pilihan percobaan pengguna, bukan persetujuan resmi. BR-02/03/04/09 dan FR-02/05/06/07/08/15/16 dilengkapi oleh [kebutuhan v2](requirements-v2.md) dengan sumber U2/P2/D2/D3, ID R2-01–R2-13, file terkait dan kasus uji.
+
+Informasi melalui pengguna: sintetis Rp130.000/jam, vinyl Rp160.000/jam, setiap hari 07.00–00.00, kelipatan satu jam, DP Rp50.000, lunas sebelum bermain. Pilihan prototipe: badminton Rp100.000/jam belum dikonfirmasi wawancara, DP per booking, dan pemesanan kurang dari 60 menit wajib penuh. Asumsi demo: durasi 1–3 jam, hold 20 menit dengan batas jam mulai, batas booking tetap 90 hari, pencatatan manual dan mulai bermain oleh pegawai pada rentang jadwal setelah lunas.
+
+Tarif lapangan boleh diperbarui hanya melalui preview/penerapan eksplisit yang tidak menimpa tarif khusus atau snapshot booking lama. Kontrak pembayaran Tahap 1 memakai pilihan DP/penuh/pelunasan dengan nominal server; nominal bebas belum didukung. Pemeriksaan mulai bermain mendukung prosedur pegawai, bukan akses fisik.
+
+BR-10/11/12/13, verifikasi terlambat dan transaksi nyata masih memerlukan rancangan/keputusan sesuai [Tahap 2](phase-2-design.md). Usulan verifikasi 10 menit, toleransi 15 menit, reschedule satu kali H-24, batas 30 hari, potongan Rp50.000 dan persetujuan koreksi pemilik tidak menjadi aturan final atau konstanta aplikasi.
+
+| Versi tambahan | Perubahan | Status |
+| --- | --- | --- |
+| 0.2 | Addendum sumber kebutuhan dan implementasi v2; isi draft awal dipertahankan, keterlacakan dipisahkan | Draft eksplorasi capstone; bukan persetujuan pengelola/UAT |

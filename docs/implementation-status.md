@@ -1,57 +1,51 @@
-# Status implementasi prototipe Lola Sport
+# Status implementasi Lola Sport v2
 
-Pemeriksaan lokal pada 11 Oktober 2026, branch `feat/lola-booking-prototype`. Repository sebelumnya hanya memiliki commit awal `2c89a54b1a1483c15446b91a4ce2c8b08ee9fe4d`; implementasi pada branch ini belum menjadi persetujuan kebutuhan bisnis. Nomor commit akhir dapat dilihat melalui `git log -1`.
+Pemeriksaan 16 Oktober 2026 WIB. Repository canonical **kheisarkc/stg-lolasport**, GitHub ID 1414080095, sama dengan repository sebelum nama akun berubah. Branch pembaruan `feat/lola-rules-v2` dibuat dari implementasi `0b2190d364996fdc06494578417059de5adde7eb`. `main` diverifikasi masih di `2c89a54b1a1483c15446b91a4ce2c8b08ee9fe4d` sebelum pekerjaan. Commit akhir dapat dilihat melalui `git log`; tidak ada merge ke main.
 
-## Cakupan yang tersedia
+Prototipe eksplorasi capstone, belum sistem operasional, persetujuan pengelola, review independen atau UAT. Proposal akademik tidak diubah. [Kebutuhan v2](requirements-v2.md) memetakan asal informasi, aturan demo, file dan kasus uji. [Tahap 2](phase-2-design.md) hanya rancangan.
 
-| Cakupan | Status dan bukti kode |
+## Yang diimplementasikan pada Tahap 1
+
+- Tarif awal v2, 07.00–00.00 pada tanggal berikutnya, durasi 1–3 jam dan batas 90 hari.
+- DP Rp50.000 per booking; pembuatan booking kurang dari 60 menit wajib penuh, termasuk web/WA/onsite. Onsite untuk jadwal mendatang tidak otomatis penuh.
+- Pembaruan tarif eksplisit melalui preview/ID/konfirmasi; nilai khusus dilewati dan perubahan setelah preview membatalkan seluruh penerapan. Seeder/setup tidak menimpa tarif yang ada.
+- Snapshot lama tetap utuh. Migration hanya menambah informasi mulai bermain dan kind pembayaran secara nullable.
+- Pilihan pencatatan awal DP/penuh dan pelunasan sisa dari server, tinjauan identitas/nominal/metode sebelum konfirmasi, serta retry yang sama setelah respons terputus/reload. Nominal bebas belum didukung.
+- Tindakan mulai bermain oleh pegawai berwenang, saat confirmed, lunas dan dalam jadwal. Waktu/pelaku pertama disimpan sekali; jam lewat tidak menyimpulkan kehadiran.
+- Hold maksimal 20 menit sejak penyimpanan, dibatasi waktu mulai. Confirmed tidak kedaluwarsa oleh timer pending. Pembayaran expired ditolak.
+- Tema navy–lime, kontrol besar/tanggal cepat, tampilan 320px, rincian ponsel, penjelasan pembayaran dan tenggat. Referensi terverifikasi di `design-notes-v2.md`.
+- Preflight PHP/ekstensi dan perbaikan konfigurasi CI Windows.
+
+## Hasil lokal aktual
+
+| Pemeriksaan | Hasil dan batas |
 | --- | --- |
-| Empat lapangan dan tarif contoh | Seeder di `backend/database/seeders/DatabaseSeeder.php`; seeding ulang tidak mereset tarif |
-| Booking pelanggan tanpa akun, harga server, referensi, token rahasia | `BookingService::create`, `LolaController::customer`, `frontend/src/components/BookingForm.tsx`, `frontend/src/app/booking/page.tsx` |
-| Konflik, batas waktu, durasi, slot bersebelahan | Validasi dan transaksi `BookingService`; konfigurasi SQLite IMMEDIATE di `backend/config/database.php`; PHP 8.4 diwajibkan |
-| Login/logout dan otorisasi pegawai | `LolaController`, `AdminOnly`, route admin, halaman server `/admin`; pembuatan akun `lola:admin` |
-| Jadwal admin dan input WA/onsite | `LolaController::schedule/adminCreate`, `AdminDashboard`, layanan booking yang sama |
-| DP/penuh, beberapa pembayaran, sisa dan pelunasan | `BookingService::pay/detail`, tabel `payments`, antarmuka pembayaran manual demo |
-| Idempotensi dan pembayaran bersamaan | UUID unik + hash isi; transaksi IMMEDIATE; UI mempertahankan kunci saat respons tidak pasti |
-| Kedaluwarsa dan pembatalan unpaid | Status efektif serta `active/cancel`; paid cancellation ditolak; riwayat tidak dihapus |
-| Rekap harian/bulanan | `LolaController::report`, batas tanggal Jakarta → UTC, hanya menjumlahkan pembayaran |
-| Tampilan handphone dan pesan status | CSS responsif, loading/empty/error/success, banner demo |
-| CI, setup, dev dan panduan staging | `scripts/`, `.github/workflows/ci.yml`, `deploy/`, `docs/staging.md` |
+| Backend PHP 8.4 | **35 tes, 354 assertions lulus**; `php artisan test` |
+| Runtime/launcher Node | **7 tes lulus**; termasuk path spasi/backtick dan ekstensi sengaja tidak dimuat pada konfigurasi PHP temporer |
+| Composer/Pint/ESLint/typecheck/build | Lulus melalui `bash scripts/check.sh`; build produksi juga dijalankan E2E setelah perubahan tampilan terakhir |
+| Browser build produksi lokal | **6 skenario lulus**, desktop/Pixel 7: booking–DP–penolakan mulai–pelunasan–mulai, retry respons hilang setelah reload, rekap, onsite/pembatalan, mendadak, tengah malam, 320px dan target utama ≥48px |
+| Konkurensi | Dua worker PHP terpisah dan database file bersama; bentrok booking, dua pelunasan berpotensi berlebih, idempotensi, dan dua pegawai menandai mulai. Barrier memastikan operasi tumpang tindih; bukan server HTTP serial sebagai bukti konkurensi |
+| Upgrade database lama | File SQLite sementara dengan schema v1 dan data lama dimigrasikan; harga/DP/pembayaran tetap utuh. Updater diuji preview, batal, tarif khusus, ulang, dan perubahan setelah preview |
+| Persistensi | Backend HTTP dihentikan/dijalankan kembali: 8 booking, 4 pembayaran, 2 penanda mulai, Rp260.000 penerimaan demo tetap tersimpan |
+| Setup Linux/PowerShell lokal | Setup baru Linux dan pengulangan PowerShell 7.5.4 di Linux + Bash lulus pada database sementara; tarif khusus, booking, pembayaran dan akun dipertahankan. Database default/`.env` dibandingkan dengan baseline dan tetap utuh; ini bukan bukti native Windows |
+| Pemeriksaan visual | Screenshot desktop dan 320px diperiksa internal; bukan evaluasi handphone nyata atau audit WCAG penuh |
 
-## Pemetaan PRD
+Waktu bisnis pada browser tests disuntikkan lewat router privat dalam `tests/Support`, pada database temporer terjaga. Jam session/cache nyata dan CSRF tetap aktif; POST tanpa CSRF ditolak. Tidak ada endpoint pengubah waktu pada aplikasi biasa.
 
-FR-01–FR-09 dan FR-12–FR-14 tersedia dalam cakupan prototipe. FR-05 mengikuti tenggat contoh, bukan keputusan final. FR-07 berupa pencatatan manual oleh pegawai, bukan verifikasi rekening/gateway. FR-10 hanya pembatalan pending belum dibayar; kasus refund/no-show belum dibuat. FR-15 sebagian: waktu/pelaku booking pegawai, pembayaran dan pembatalan dicatat; tidak ada audit log lengkap atau koreksi transaksi. FR-11 reschedule belum dibuat. FR-16 tarif melalui data/config, bukan UI pengaturan/penutupan.
+## CI remote
 
-Pemilik belum memiliki role tersendiri; semua akun pegawai berwenang menggunakan fungsi admin demo. Mekanisme penerimaan uang nyata tidak tersedia. QRIS/transfer/tunai di sini hanya label metode pada catatan contoh.
+CI awal yang diverifikasi: [run 38141742834](https://github.com/kheisarkc/stg-lolasport/actions/runs/38141742834), commit 0b2190d. Linux berhasil, Windows gagal pada setup. Anotasi resmi mencatat league/flysystem-local dan league/mime-type-detection membutuhkan **ext-fileinfo** yang belum aktif pada `C:\tools\php\php.ini`. Arsip log penuh ditolak proxy, tetapi anotasi menyediakan sebab spesifik tersebut.
 
-## Perintah dan bukti pengujian
+Perbaikan v2 mengaktifkan fileinfo beserta ekstensi lockfile secara eksplisit pada kedua runner, serta preflight sebelum Composer. Tidak ada composer update atau pengabaian platform. Status run v2 akan dicatat setelah branch dikirim dan hasil remote diperiksa; jangan menyamakan lulus lokal dengan CI Windows lulus.
 
-- `bash scripts/setup.sh`: instalasi dari lockfile, migration non-reset, seeder lapangan. Pemeriksaan pengulangan dijalankan pada lingkungan lokal, tanpa mengubah APP_KEY yang sudah ada.
-- `bash scripts/check.sh`: **lulus**, meliputi validasi Composer, Pint, **19 pengujian backend / 158 assertions**, ESLint, typecheck, dan build Next.js. Setelah perbaikan UI terakhir, lint/typecheck dan build produksi diulang dan lulus melalui rangkaian E2E.
-- `LOLA_E2E_MODE=production node scripts/e2e.mjs`: **2 skenario lulus**, Chromium 154.0.8037.92 melalui UI desktop dan emulasi Pixel 7, dengan database/akun temporer. Mencakup booking, login, DP, respons pembayaran terputus dan retry, pelunasan, token salah, jadwal publik tanpa nama, CSRF, rekap harian/bulanan, input WA, pembatalan dan logout. Browser sistem dipilih melalui `PLAYWRIGHT_CHROMIUM_EXECUTABLE`; unduhan browser Playwright standar ditolak proxy cloud ini.
-- Backend dihentikan/dijalankan kembali pada database yang sama; fixture memastikan empat booking, empat pembayaran, dua pembatalan dan Rp300.000 penerimaan demo tetap tersimpan.
-- `ConcurrencyTest`: dua worker/proses terpisah dengan barrier mulai dan SQLite bersama. Permintaan tumpang tindih terbukti waktunya; uji booking, overpayment dan idempotensi bersamaan. Uji tambahan memastikan kunci diperoleh sebelum read dan database sibuk menghasilkan 503 yang terkendali.
+## Data dan penggunaan yang belum dilakukan
 
-Pengujian awal memakai PHP 8.2; pembacaan implementasi framework menunjukkan konfigurasi IMMEDIATE hanya diterapkan PHP 8.4+. Runtime/manifest/CI diperbarui ke PHP 8.4 dan pemeriksaan diulang. Hasil sebelum perbaikan ini tidak digunakan untuk mengklaim kunci IMMEDIATE.
+Pembaruan tarif pada database pengguna bukan bagian otomatis implementasi. Pengguna menjalankan langkah backup, setup/migration, preview dan apply terpisah di `windows.md`/README. Tidak ada perintah reset database atau perubahan snapshot historis dalam deployment/setup rutin.
 
-Pemeriksaan UI menemukan klik lapangan yang sudah terpilih dapat membuat form terus memeriksa jadwal. Handler sekarang hanya mengubah indikator jika pilihan berubah; skenario browser mencakup klik pilihan lapangan/tanggal yang sama setelah jadwal dimuat. Ekspektasi skenario ponsel juga memperhitungkan booking desktop yang sengaja tetap berada di database bersama.
+Belum ada hosting/domain/disk persisten atau URL staging terverifikasi; konfigurasi staging tetap contoh. Belum ada pengujian laptop pengguna untuk v2, Safari/perangkat nyata, evaluasi beban operasional, pemulihan backup staging, UAT atau pengukuran efektivitas.
 
-Tangkapan layar desktop/ponsel diperiksa secara visual di lingkungan lokal; assertion browser memastikan tidak ada overflow horizontal pada halaman status dan admin. Ini bukan evaluasi perangkat nyata atau penilaian pengelola. Pengulangan setup memverifikasi APP_KEY, tarif dan jumlah booking/pembayaran yang sudah ada tetap dipertahankan.
+Tahap 1 tidak memiliki bukti upload, antrean verifikasi, pengenalan transfer nyata duplikat, received_at terpisah, reschedule, no-show, refund/koreksi, role pemilik, ekspor atau penutupan lapangan. Kasus uang masuk tetapi verifikasi melewati hold belum diselesaikan. Nilai 10 menit/15 menit/H-24/satu reschedule/30 hari/potongan Rp50.000 serta persetujuan koreksi pemilik tetap usulan Tahap 2.
 
-## Dukungan Windows dan PowerShell
+## Riwayat verifikasi sebelumnya
 
-Perbaikan setelah percobaan pengguna Windows: `scripts/setup.ps1` tersedia tanpa WSL/Bash; `scripts/process.mjs` menjalankan npm melalui Node dan `npm-cli.js`, sehingga tidak memanggil batch `npm.cmd` secara langsung yang menyebabkan `spawn EINVAL`. Launcher menghentikan pohon proses Windows melalui taskkill. Setup memilih executable pertama pada PATH, menolak PHP di bawah 8.4 sebelum instalasi, dan mempertahankan konfigurasi/data yang sudah ada. Panduan PHP 8.4 terpisah dari XAMPP ada di `docs/windows.md`.
-
-Lima pengujian launcher lulus di cloud Linux, termasuk subprocess nyata dengan path spasi/backtick dan argumen literal. Setup dijalankan melalui PowerShell 7.5.4 pada Linux: sintaks valid, setup berhasil, pengulangan mempertahankan `.env`, tarif, booking, pembayaran dan akun. Skenario PHP 8.2 ditolak sebelum Composer dipanggil. Launcher development dinyalakan melalui helper, health/empat lapangan diperiksa, lalu SIGINT menghentikan kedua layanan dan melepas port. Rangkaian backend 19/158, lint/typecheck/build, dua skenario browser produksi dan persistensi diulang dan lulus.
-
-CI Windows dengan PHP 8.4/Node 22, setup PowerShell dan E2E telah disiapkan. **Hasil Windows asli, Windows PowerShell 5.1, taskkill, dan CI remote belum diverifikasi**; hasil simulasi Windows pada Linux tidak menggantikan percobaan laptop pengguna.
-
-## Batas bukti dan pekerjaan lanjutan
-
-Belum ada deployment/URL staging terverifikasi, hasil CI remote, review independen, UAT pengelola, pengujian handphone nyata/Safari, evaluasi beban bisnis, pemulihan backup staging atau pengukuran dampak operasional. Contoh Nginx/systemd perlu disesuaikan dan diuji pada host yang disediakan.
-
-Tidak ada reschedule, refund/koreksi pembayaran, fitur penyelesaian/no-show, notifikasi WhatsApp/email, pengaturan tarif di UI, penutupan jadwal, ekspor, atau pemisahan role pemilik. Booking yang sudah dibayar tetap confirmed sampai ada aturan lanjutan. Token pelanggan memberi akses kepada pemegang tautan; perlindungan perangkat dan pembagian tautan tetap perlu dijelaskan pada pengguna.
-
-## Hambatan akses
-
-Baca Git remote tersedia. Akses GitHub API melalui `gh api` ditolak jaringan/proxy (Forbidden); ini membatasi pembacaan Actions dan pembuatan draft PR. Status push diperiksa pada langkah serah terima; jangan menganggap push sama dengan deploy. Hosting, domain, disk persisten dan akses deployment belum ditemukan. Tidak dibuat langganan berbayar.
+Implementasi v1 pada 11 Oktober 2026 mencatat 19 tes backend/158 assertions dan dua skenario browser. Perbaikan Windows 0b2190d belum berhasil pada CI karena fileinfo di atas. Angka v1 bukan hasil uji v2; gunakan tabel hasil terbaru dan run CI yang dinyatakan secara eksplisit.

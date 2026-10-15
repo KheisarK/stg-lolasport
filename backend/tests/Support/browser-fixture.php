@@ -21,6 +21,6 @@ $user->password = $password;
 $user->is_admin = true;
 $user->save();
 $file = $directory.'/credentials.json';
-file_put_contents($file, json_encode(['email' => $user->email, 'password' => $password]));
+file_put_contents($file, json_encode(['email' => $user->email, 'password' => $password, 'clock_path' => $directory.'/clock.json', 'now' => '2026-10-16T02:00:00+00:00']));
 chmod($file, 0600);
 echo "Isolated browser fixture created.\n";

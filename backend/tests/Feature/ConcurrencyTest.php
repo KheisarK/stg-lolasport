@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\BookingService;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -131,16 +132,16 @@ class ConcurrencyTest extends TestCase
         $actor = User::factory()->create(['is_admin' => true])->id;
         $service = app(BookingService::class);
         $id = $service->create($this->input())['booking']['id'];
-        $service->pay($id, ['amount' => 90000, 'method' => 'cash', 'idempotency_key' => (string) Str::uuid()], $actor);
+        $service->pay($id, ['kind' => 'dp', 'expected_amount' => 50000, 'method' => 'cash', 'idempotency_key' => (string) Str::uuid()], $actor);
         $base = ['mode' => 'payment', 'booking_id' => $id, 'actor' => $actor];
         $results = $this->race([
-            [...$base, 'input' => ['amount' => 150000, 'method' => 'cash', 'idempotency_key' => (string) Str::uuid()]],
-            [...$base, 'input' => ['amount' => 150000, 'method' => 'qris', 'idempotency_key' => (string) Str::uuid()]],
+            [...$base, 'input' => ['kind' => 'settlement', 'expected_amount' => 210000, 'method' => 'cash', 'idempotency_key' => (string) Str::uuid()]],
+            [...$base, 'input' => ['kind' => 'settlement', 'expected_amount' => 210000, 'method' => 'qris', 'idempotency_key' => (string) Str::uuid()]],
         ]);
         $statuses = array_column($results, 'status');
         sort($statuses);
-        $this->assertSame([200, 422], $statuses);
-        $this->assertSame(240000, (int) DB::table('payments')->sum('amount'));
+        $this->assertSame([200, 409], $statuses);
+        $this->assertSame(260000, (int) DB::table('payments')->sum('amount'));
         $this->assertDatabaseCount('payments', 2);
     }
 
@@ -148,10 +149,27 @@ class ConcurrencyTest extends TestCase
     {
         $actor = User::factory()->create(['is_admin' => true])->id;
         $id = app(BookingService::class)->create($this->input())['booking']['id'];
-        $payload = ['mode' => 'payment', 'booking_id' => $id, 'actor' => $actor, 'input' => ['amount' => 90000, 'method' => 'cash', 'idempotency_key' => (string) Str::uuid()]];
+        $payload = ['mode' => 'payment', 'booking_id' => $id, 'actor' => $actor, 'input' => ['kind' => 'dp', 'expected_amount' => 50000, 'method' => 'cash', 'idempotency_key' => (string) Str::uuid()]];
         $results = $this->race([$payload, $payload]);
         $this->assertSame([200, 200], array_column($results, 'status'));
         $this->assertEqualsCanonicalizing([false, true], array_column($results, 'replayed'));
         $this->assertDatabaseCount('payments', 1);
+    }
+
+    public function test_two_staff_start_requests_record_one_actor_and_timestamp(): void
+    {
+        $first = User::factory()->create(['is_admin' => true])->id;
+        $second = User::factory()->create(['is_admin' => true])->id;
+        $service = app(BookingService::class);
+        $booking = $service->create($this->input())['booking'];
+        $service->pay($booking['id'], ['kind' => 'full', 'expected_amount' => 260000, 'method' => 'cash', 'idempotency_key' => (string) Str::uuid()], $first);
+        $base = ['mode' => 'start', 'booking_id' => $booking['id'], 'now' => $booking['starts_at']];
+        $results = $this->race([[...$base, 'actor' => $first], [...$base, 'actor' => $second]]);
+        $this->assertSame([200, 200], array_column($results, 'status'));
+        $this->assertEqualsCanonicalizing([true, false], array_column($results, 'replayed'));
+        $row = DB::table('bookings')->find($booking['id']);
+        $this->assertSame($booking['starts_at'], CarbonImmutable::parse($row->started_at, 'UTC')->toIso8601String());
+        $this->assertContains($row->started_by, [$first, $second]);
+        $this->assertDatabaseCount('bookings', 1);
     }
 }

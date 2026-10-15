@@ -1,6 +1,6 @@
-# Lola Sport — prototipe reservasi web
+# Lola Sport — prototipe reservasi web v2 (Tahap 1)
 
-Prototipe Laravel + Next.js untuk mencoba reservasi lapangan, input booking WA/onsite oleh pegawai, pencatatan DP dan pelunasan, serta rekap penerimaan. **Mode demo—tidak memproses uang nyata.** Tarif dan kebijakan adalah asumsi prototipe yang perlu ditinjau pengelola; lihat [keputusan prototipe](docs/prototype-decisions.md). [PRD v0.1](docs/PRD.md) tetap merupakan draft kebutuhan.
+Prototipe Laravel + Next.js untuk mencoba reservasi lapangan, input booking WA/onsite oleh pegawai, pencatatan DP dan pelunasan, serta rekap penerimaan. **Mode demo—tidak memproses uang nyata.** Informasi kebutuhan melalui pengguna dan pilihan demo dibedakan serta perlu ditinjau pengelola; lihat [keputusan prototipe](docs/prototype-decisions.md). [PRD](docs/PRD.md) dan [kebutuhan v2 beserta asalnya](docs/requirements-v2.md) tetap draft. [Tahap 2](docs/phase-2-design.md) hanya rancangan, belum diimplementasikan.
 
 ## Struktur dan teknologi
 
@@ -17,7 +17,7 @@ Browser → Next.js → API Laravel → SQLite. Browser menggunakan satu origin;
 
 ## Instalasi lokal
 
-Prasyarat: Node.js 22 atau 24, PHP 8.4+ yang kompatibel dengan lockfile, Composer 2, serta ekstensi PHP ctype, curl, dom, fileinfo, mbstring, pdo_sqlite, sqlite3, tokenizer, xml, xmlreader, xmlwriter, zip. Setup memakai Bash pada Linux/macOS atau PowerShell pada Windows. Fungsi `proc_open` harus tersedia untuk pengujian proses terpisah. Tidak diperlukan gateway, Redis, queue worker, atau database eksternal.
+Prasyarat: Node.js 22 atau 24, PHP 8.4+ yang kompatibel dengan lockfile, Composer 2, serta ekstensi PHP ctype, curl, dom, fileinfo, mbstring, openssl, pdo_sqlite, sqlite3, tokenizer, xml, xmlreader, xmlwriter, zip. Setup memakai Bash pada Linux/macOS atau PowerShell pada Windows. Fungsi `proc_open` harus tersedia untuk pengujian proses terpisah. Tidak diperlukan gateway, Redis, queue worker, atau database eksternal.
 
 Dari root repository:
 
@@ -34,6 +34,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 Lihat [panduan Windows](docs/windows.md) untuk memilih PHP 8.4 jika terminal masih menggunakan PHP 8.2 dari XAMPP, termasuk konfigurasi ekstensi dan penanganan error awal.
 
 Script memakai lockfile, membuat `.env` hanya jika belum ada, membuat APP_KEY hanya jika kosong, menjalankan migration yang belum diterapkan, dan mengisi lapangan contoh tanpa menimpa tarif yang sudah ada. Script tidak mereset database dan tidak membuat akun dengan password bawaan. Pengguna cloud di workspace ini dapat memakai runtime yang sudah disiapkan pada `/workspace/lola-tools/bin`; script mendeteksinya otomatis.
+
+**Database yang sudah terisi:** migration hanya menambah kolom; seeder tidak mengganti tarif yang sudah ada. Untuk tarif v2, cadangkan data saat layanan berhenti, lalu tinjau `php artisan lola:rates-v2` dari `backend/`. Penerapan merupakan tindakan terpisah menggunakan `--apply --court=ID` dan konfirmasi. [Petunjuk Windows](docs/windows.md) menjelaskan backup/pergantian branch; [kebutuhan v2](docs/requirements-v2.md) menjelaskan guard tarif khusus. Jangan mereset database.
 
 Konfigurasi lokal backend mengikuti `backend/.env.example`. `APP_KEY` adalah kunci enkripsi aplikasi; buat lokal melalui Artisan dan jangan masukkan ke Git. `DB_DATABASE` opsional untuk path SQLite absolut; default `backend/database/database.sqlite`. Backend menyimpan waktu UTC, lalu input/tampilan/laporan memakai Asia/Jakarta. Frontend dapat memakai `frontend/.env.local` dari `.env.example`; `BACKEND_URL` adalah alamat internal Laravel, bukan variabel publik browser. Jangan mengubah APP_KEY yang telah dipakai lingkungan aktif tanpa rencana migrasi session/enkripsi.
 
@@ -55,17 +57,22 @@ node scripts/dev.mjs
 
 Frontend berjalan pada port 3000 dan backend pada port 8000, keduanya terikat ke loopback. Buka alamat lokal port 3000 melalui browser mesin pengembangan; `/admin` meminta login. `Ctrl+C` menghentikan kedua proses. `FRONTEND_PORT` dan `BACKEND_PORT` dapat mengubah port. Di cloud ini loopback divalidasi melalui request internal; belum ada tautan staging publik.
 
-## Mencoba booking → DP → pelunasan
+## Mencoba booking → DP → mulai ditolak → lunas → mulai
 
-1. Pilih lapangan, tanggal besok, jam mulai dan durasi. Gunakan nama/kontak fiktif, pilih DP, lalu buat booking demo.
-2. Simpan tautan halaman status. Bagian setelah `#` adalah token rahasia; jangan dibagikan di issue atau screenshot alamat browser.
-3. Buka `/admin`, login dengan akun yang dibuat, pilih tanggal booking dan klik booking pemesan.
-4. Catat pembayaran awal minimal yang ditampilkan. Untuk Futsal Sintetis satu jam: total contoh Rp150.000, DP minimum Rp45.000, sisa Rp105.000.
-5. Catat sisa Rp105.000 sebagai pembayaran terpisah. Status pembayaran menjadi lunas; booking tetap terkonfirmasi.
-6. Muat ulang status pelanggan. Periksa dua catatan pembayaran dan sisa nol. Rekap harian memakai tanggal pencatatan pembayaran WIB, bukan tanggal bermain.
-7. Coba tab booking WA/onsite; slot menggunakan sumber jadwal yang sama. Pembatalan hanya tersedia untuk pending belum dibayar. Kedaluwarsa otomatis berlaku saat pembacaan/pemeriksaan slot, tanpa scheduler.
+1. Pilih Futsal Sintetis satu jam dengan jadwal minimal 60 menit ke depan. Pada database dengan tarif v2: total Rp130.000, DP Rp50.000 dan sisa Rp80.000. Gunakan data fiktif. DP tetap Rp50.000 untuk dua/tiga jam; badminton Rp100.000/jam masih pilihan prototipe.
+2. Buat booking, lalu simpan tautan status. Bagian setelah `#` adalah token rahasia. Memilih DP/penuh belum berarti sudah membayar; hold dimulai dari booking tersimpan dan maksimal 20 menit atau sampai jam mulai.
+3. Login `/admin`, pilih tanggal dan booking. Pada Jenis pencatatan pilih DP; pilih metode, tinjau identitas/nominal, lalu konfirmasi pencatatan demo sebelum tenggat.
+4. Klik **Tandai mulai bermain** saat masih ada sisa. Server menolak karena belum lunas.
+5. Pilih **Pelunasan sisa tagihan** Rp80.000, tinjau lalu konfirmasi. Jumlah dua catatan menjadi Rp130.000 dan sisa nol; seluruh tagihan tidak ditambahkan lagi.
+6. Setelah masuk rentang jadwal booking, klik **Tandai mulai bermain**. Waktu dan pegawai dicatat sekali. Klik sebelum jam mulai/setelah jam selesai ditolak; jam yang lewat tidak otomatis membuktikan kehadiran.
+7. Periksa status pelanggan dan rekap. Rekap Tahap 1 memakai waktu pencatatan pembayaran WIB. Ini bukan waktu transfer bank yang diverifikasi.
+8. Coba WA/onsite untuk jadwal mendatang: DP tetap tersedia. Booking kurang dari 60 menit sebelum mulai hanya penuh. Sesi 23.00 satu jam selesai 00.00 pada tanggal berikutnya.
 
-Jika koneksi terputus saat pembayaran, ulangi dengan nominal/metode yang sama untuk memakai kunci idempotensi yang sama. Periksa status sebelum mengubah isi atau membuat pembayaran baru.
+Alur manual DP sampai mulai bermain perlu menunggu jadwal tersebut. Untuk verifikasi cepat tanpa menunggu satu jam, jalankan E2E: jam bisnis dikendalikan hanya pada server pengujian/database sementara, tanpa mengubah jam laptop atau menyediakan pengubah waktu pada aplikasi biasa.
+
+Jika respons pembayaran terputus, UI menyimpan permintaan dan kunci yang sama, termasuk setelah reload; buka booking lalu coba ulang pencatatan tersebut. Dua input baru atas transfer nyata yang sama belum dikenali otomatis. Nominal berbeda dari pilihan standar belum didukung: tunda pencatatan demo dan cocokkan bersama pengelola, jangan mengarang nominal.
+
+Belum ada upload bukti/antrean verifikasi. Pembayaran masuk tetapi baru diperiksa setelah hold habis belum diselesaikan Tahap 1; booking expired menolak pembayaran, tanpa merebut slot yang sudah dipesan pihak lain. Lihat rancangan Tahap 2.
 
 ## Pemeriksaan dan pengujian
 
@@ -86,6 +93,9 @@ CI disiapkan di `.github/workflows/ci.yml`. Hasil lokal, status CI remote, stagi
 
 ## Dokumentasi lanjutan
 
+- [Kebutuhan v2](docs/requirements-v2.md): sumber informasi, batas demo dan pemetaan kebutuhan–kode–uji.
+- [Rancangan Tahap 2](docs/phase-2-design.md): alur, data, layar, kewenangan, risiko dan keputusan terbuka.
+- [Catatan desain](docs/design-notes-v2.md): referensi terverifikasi dan pemeriksaan layar handphone.
 - [Keputusan prototipe](docs/prototype-decisions.md): aturan contoh, keamanan, arsitektur dan batas cakupan.
 - [Status implementasi](docs/implementation-status.md): bukti pemeriksaan dan pekerjaan tersisa.
 - [Panduan belajar](docs/learning-guide.md): hubungan komponen, tahapan dan latihan.

@@ -25,16 +25,48 @@ Jika Composer masih memakai PHP 8.2 meskipun `php -v` sudah 8.4+, periksa lokasi
 
 ## Mengambil perbaikan dan setup
 
-Jika clone sudah berada pada branch `feat/lola-booking-prototype`, jalankan dari root:
+Untuk pembaruan v2, periksa perubahan lokal lalu ambil branch pembaruan dari root. Pergantian branch normal akan menolak menimpa perubahan yang konflik; jangan memakai reset/force untuk mengatasinya.
 
 ```powershell
+git status --short
+git fetch origin
+git switch feat/lola-rules-v2
 git pull --ff-only
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 ```
 
 `ExecutionPolicy Bypass` hanya berlaku pada proses PowerShell tersebut, tidak mengubah kebijakan Windows secara permanen. Script memeriksa tool/versi, memasang dependensi dari lockfile, membuat `.env` hanya jika belum ada, mempertahankan APP_KEY yang telah terisi, menjalankan migration tanpa reset, dan mengisi lapangan yang belum tersedia. Script tidak membuat akun/password bawaan.
 
-Kemudian:
+### Database yang sudah ada: backup dan tarif terpisah
+
+Sebelum setup pembaruan, hentikan launcher dengan Ctrl+C. Untuk lokasi SQLite default `backend/database/database.sqlite`, salin direktori database bersama file pendamping WAL/SHM ketika **semua penulis sudah berhenti**. Contoh backup di luar repository:
+
+```powershell
+$lolaBackup = Join-Path $env:USERPROFILE ("lola-backups\before-v2-" + (Get-Date -Format "yyyyMMdd-HHmmss"))
+New-Item -ItemType Directory -Path $lolaBackup -Force | Out-Null
+Copy-Item -LiteralPath .\backend\database -Destination $lolaBackup -Recurse
+```
+
+Jika DB_DATABASE menunjuk lokasi khusus, cadangkan lokasi itu beserta pendampingnya; file default belum tentu data aktif. Jika aplikasi tetap menulis, gunakan API backup SQLite konsisten sesuai panduan staging, bukan salinan file biasa. Pertahankan `.env` dan APP_KEY yang sudah dipakai.
+
+Jalankan setup dari root; script tidak menerapkan tarif ke data yang sudah terisi:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+Setelah setup/migration berhasil, tinjau tarif dari `backend/`:
+
+```powershell
+Set-Location backend
+php artisan lola:rates-v2
+# Contoh saja: gunakan ID yang sudah ditinjau pada tabel preview sendiri.
+php artisan lola:rates-v2 --apply --court=1 --court=2 --court=3 --court=4
+Set-Location ..
+```
+
+Periksa nilai sekarang/usulan sebelum konfirmasi. Tarif khusus dilewati; perubahan setelah preview membatalkan seluruh penerapan. Booking/pembayaran lama tetap menggunakan snapshot lama. Perintah aman diulang dan tidak mereset database.
+
+Kemudian, untuk pengguna baru buat akun (akun lama tetap dapat digunakan):
 
 ```powershell
 Set-Location backend
@@ -55,4 +87,4 @@ Launcher menggunakan Node untuk menjalankan `npm-cli.js`, bukan memanggil `npm.c
 - `Setup belum selesai`: jalankan setup dan selesaikan error yang muncul sebelum memulai aplikasi.
 - Port terpakai: tutup launcher lama dengan Ctrl+C, atau gunakan `$env:FRONTEND_PORT='3001'` dan `$env:BACKEND_PORT='8001'` sebelum menjalankan launcher; buka port frontend yang dipilih.
 
-Pemeriksaan launcher dapat dijalankan dengan `node --test scripts/tests/process.test.mjs`. Hasil cloud Linux dan simulasi pemilihan executable Windows tidak membuktikan seluruh aplikasi telah diuji pada laptop Windows pengguna. Catat hasil percobaan Windows secara terpisah.
+Pemeriksaan launcher/runtime dapat dijalankan dengan `node --test scripts/tests/process.test.mjs scripts/tests/runtime.test.mjs`. Kegagalan CI pada commit 0b2190d disebabkan ekstensi fileinfo yang belum diaktifkan; konfigurasi CI v2 dan preflight memperbaikinya tanpa mengabaikan persyaratan platform. Hasil CI terbaru dicatat di status implementasi. Hasil cloud Linux dan simulasi pemilihan executable Windows tidak membuktikan seluruh aplikasi telah diuji pada laptop Windows pengguna. Catat hasil percobaan Windows secara terpisah.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
@@ -22,7 +22,8 @@ export default function BookingForm({
   onCreated?: (booking: Booking, token: string) => void;
 }) {
   const router = useRouter();
-  const [now] = useState(() => initialNow ?? Date.now());
+  const [now, setNow] = useState(() => initialNow ?? Date.now());
+  const clockOffset = useRef(0);
   const [courts, setCourts] = useState<Court[]>([]);
   const [rules, setRules] = useState<Rules | null>(null);
   const [courtId, setCourtId] = useState(1);
@@ -40,11 +41,13 @@ export default function BookingForm({
   const [revision, setRevision] = useState(0);
   useEffect(() => {
     let alive = true;
-    api<{ courts: Court[]; rules: Rules }>("/courts")
+    api<{ courts: Court[]; rules: Rules; server_now: string }>("/courts")
       .then((data) => {
         if (alive) {
           setCourts(data.courts);
           setRules(data.rules);
+          clockOffset.current = Date.parse(data.server_now) - Date.now();
+          setNow(Date.parse(data.server_now));
         }
       })
       .catch((e) => {
@@ -53,6 +56,13 @@ export default function BookingForm({
     return () => {
       alive = false;
     };
+  }, []);
+  useEffect(() => {
+    const timer = setInterval(
+      () => setNow(Date.now() + clockOffset.current),
+      1000,
+    );
+    return () => clearInterval(timer);
   }, []);
   useEffect(() => {
     const controller = new AbortController();
@@ -77,10 +87,30 @@ export default function BookingForm({
   }, [date, courtId, revision]);
   const court = courts.find((c) => c.id === courtId);
   const total = court ? (court.hourly_rate * duration) / 60 : 0;
-  const due =
-    option === "full"
-      ? total
-      : Math.ceil((total * (rules?.dp_percent ?? 0)) / 100);
+  const hours = Array.from(
+    { length: rules ? rules.close_hour - rules.open_hour : 17 },
+    (_, i) => i + (rules?.open_hour ?? 7),
+  ).filter((h) => h + duration / 60 <= (rules?.close_hour ?? 24));
+  const validStart = hours.some(
+    (h) => `${String(h).padStart(2, "0")}:00` === start,
+  )
+    ? start
+    : "";
+  const from = Date.parse(`${date}T${validStart}:00+07:00`);
+  const to = from + duration * 60000;
+  const urgent =
+    Number.isFinite(from) &&
+    from - now < (rules?.full_payment_within_minutes ?? 60) * 60000;
+  const canDp =
+    Number.isFinite(from) && !urgent && total > (rules?.dp_amount ?? 50000);
+  const paymentOption = option === "dp" && !canDp ? "full" : option;
+  const unavailable =
+    !validStart ||
+    from <= now ||
+    busy.some(
+      (b) => from < Date.parse(b.ends_at) && to > Date.parse(b.starts_at),
+    );
+  const due = paymentOption === "full" ? total : (rules?.dp_amount ?? 50000);
   function changeSchedule() {
     setSlotsLoading(true);
   }
@@ -97,9 +127,9 @@ export default function BookingForm({
           body: JSON.stringify({
             court_id: courtId,
             date,
-            start_time: start,
+            start_time: validStart,
             duration,
-            payment_option: option,
+            payment_option: paymentOption,
             customer_name: form.get("customer_name"),
             contact: form.get("contact"),
             ...(admin ? { channel: form.get("channel") } : {}),
@@ -118,7 +148,7 @@ export default function BookingForm({
     }
   }
   return (
-    <form onSubmit={submit} className="booking-layout">
+    <form onSubmit={submit} className="booking-layout" id="pesan">
       <div className="panel">
         <h3>
           <span className="step">1</span> Pilih lapangan & waktu
@@ -144,6 +174,27 @@ export default function BookingForm({
               </span>
               <strong>{c.name}</strong>
               <small>{money(c.hourly_rate)} / jam</small>
+            </button>
+          ))}
+        </div>
+        <div className="quick-dates" aria-label="Pilih tanggal cepat">
+          {[
+            [0, "Hari ini"],
+            [1, "Besok"],
+          ].map(([offset, label]) => (
+            <button
+              type="button"
+              key={offset}
+              aria-pressed={date === jakartaDate(Number(offset), now)}
+              onClick={() => {
+                const next = jakartaDate(Number(offset), now);
+                if (date !== next) {
+                  setDate(next);
+                  changeSchedule();
+                }
+              }}
+            >
+              {label}
             </button>
           ))}
         </div>
@@ -181,32 +232,39 @@ export default function BookingForm({
         </div>
         <label>
           Jam mulai (WIB)
-          <select value={start} onChange={(e) => setStart(e.target.value)}>
-            {Array.from(
-              { length: rules ? rules.close_hour - rules.open_hour : 16 },
-              (_, i) => i + (rules?.open_hour ?? 7),
-            )
-              .filter((h) => h + duration / 60 <= (rules?.close_hour ?? 23))
-              .map((h) => {
-                const value = `${h.toString().padStart(2, "0")}:00`;
-                const from = new Date(`${date}T${value}:00+07:00`).getTime();
-                const to = from + duration * 60000;
-                const unavailable =
-                  from <= now ||
-                  busy.some(
-                    (b) =>
-                      from < Date.parse(b.ends_at) &&
-                      to > Date.parse(b.starts_at),
-                  );
-                return (
-                  <option key={h} value={value} disabled={unavailable}>
-                    {value}
-                    {unavailable ? " · Tidak tersedia" : ""}
-                  </option>
+          <select
+            required
+            value={validStart}
+            onChange={(e) => setStart(e.target.value)}
+          >
+            <option value="" disabled>
+              Pilih jam mulai
+            </option>
+            {hours.map((h) => {
+              const value = `${h.toString().padStart(2, "0")}:00`;
+              const from = new Date(`${date}T${value}:00+07:00`).getTime();
+              const to = from + duration * 60000;
+              const unavailable =
+                from <= now ||
+                busy.some(
+                  (b) =>
+                    from < Date.parse(b.ends_at) &&
+                    to > Date.parse(b.starts_at),
                 );
-              })}
+              return (
+                <option key={h} value={value} disabled={unavailable}>
+                  {value}
+                  {h + duration / 60 === 24 ? " · selesai 00:00 (+1 hari)" : ""}
+                  {unavailable ? " · Tidak tersedia" : ""}
+                </option>
+              );
+            })}
           </select>
         </label>
+        <p className="field-help">
+          Senin–Minggu, 07.00–00.00 WIB. Jam tutup 00.00 berada pada tanggal
+          berikutnya.
+        </p>
         <div className="availability" aria-live="polite">
           {slotsLoading ? (
             "Memeriksa jadwal…"
@@ -230,7 +288,7 @@ export default function BookingForm({
         <p className="muted">
           Gunakan data fiktif untuk mencoba prototipe ini.
         </p>
-        <div className="form-row">
+        <div className="form-row customer-fields">
           <label>
             Nama pemesan
             <input
@@ -268,10 +326,10 @@ export default function BookingForm({
         <p className="eyebrow">RINGKASAN BOOKING</p>
         <h3>{court?.name ?? "Pilih lapangan"}</h3>
         <p>
-          {date} · {start} WIB · {duration / 60} jam
+          {date} · {validStart || "Pilih jam"} WIB · {duration / 60} jam
         </p>
         <div className="total-line">
-          <span>Total contoh</span>
+          <span>Perkiraan tagihan</span>
           <strong>{money(total)}</strong>
         </div>
         <h3>
@@ -282,12 +340,13 @@ export default function BookingForm({
             type="radio"
             name="payment_option"
             value="dp"
-            checked={option === "dp"}
+            checked={paymentOption === "dp"}
+            disabled={!canDp}
             onChange={() => setOption("dp")}
           />
           <span>
-            <strong>DP {rules?.dp_percent ?? 30}%</strong>
-            <small>Sisa dilunasi di tempat</small>
+            <strong>DP {money(rules?.dp_amount ?? 50000)}</strong>
+            <small>Per booking, bukan per jam</small>
           </span>
         </label>
         <label className="radio-card">
@@ -295,7 +354,7 @@ export default function BookingForm({
             type="radio"
             name="payment_option"
             value="full"
-            checked={option === "full"}
+            checked={paymentOption === "full"}
             onChange={() => setOption("full")}
           />
           <span>
@@ -303,9 +362,15 @@ export default function BookingForm({
             <small>Seluruh tagihan sekaligus</small>
           </span>
         </label>
+        {urgent && (
+          <p className="notice" role="status">
+            Kurang dari 60 menit sebelum mulai: wajib bayar penuh. Berlaku untuk
+            booking web, WA, dan onsite.
+          </p>
+        )}
         <dl>
           <div>
-            <dt>Pembayaran awal minimum</dt>
+            <dt>Pembayaran awal</dt>
             <dd>{money(due)}</dd>
           </div>
           <div>
@@ -314,9 +379,13 @@ export default function BookingForm({
           </div>
         </dl>
         <p className="notice">
-          Slot ditahan {rules?.hold_minutes ?? 20} menit. Pegawai mencatat
-          pembayaran demo sebelum tenggat. Pilihan ini belum menandakan
-          pembayaran diterima.
+          Setelah booking tersimpan, slot ditahan paling lama{" "}
+          {rules?.hold_minutes ?? 20} menit, maksimal hingga jam mulai. Memilih
+          DP/penuh belum berarti pembayaran diterima.
+        </p>
+        <p className="pay-before-play">
+          Lunas sebelum bermain. Pelunasan dicatat pegawai pada booking yang
+          sama.
         </p>
         {error && (
           <p role="alert" className="error">
@@ -325,7 +394,9 @@ export default function BookingForm({
         )}
         <button
           className="primary full"
-          disabled={!rules || submitting || slotsLoading || !!slotsError}
+          disabled={
+            !rules || submitting || slotsLoading || !!slotsError || unavailable
+          }
         >
           {submitting
             ? "Menyimpan booking…"
@@ -334,7 +405,7 @@ export default function BookingForm({
               : "Buat booking demo →"}
         </button>
         <small className="muted">
-          Tarif dan ketentuan adalah asumsi prototipe.
+          Harga akhir dihitung server. Ketentuan demo perlu ditinjau pengelola.
         </small>
       </aside>
     </form>
