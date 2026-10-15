@@ -1,50 +1,59 @@
-# Keputusan prototipe Lola Sport
+# Keputusan prototipe Lola Sport v2
 
-Semua kebijakan pada bagian ini adalah **asumsi prototipe—perlu ditinjau pengelola**, bukan persetujuan atas PRD. PRD v0.1 disalin utuh dari lampiran ke `docs/PRD.md`; tidak diubah menjadi spesifikasi final.
+Pembaruan 16 Oktober 2026 WIB. Dasar dan status setiap angka ada di [kebutuhan v2](requirements-v2.md). Informasi pembahasan melalui pengguna, pilihan sementara pengguna, asumsi teknis demo dan referensi desain dibedakan di sana. Implementasi tidak menjadikannya kebijakan resmi.
 
-## Penerimaan cakupan
+## Batas percobaan
 
-- Pelanggan tanpa akun memesan lapangan/waktu; backend menghitung harga dan menolak bentrok.
-- Pegawai login, melihat jadwal, memasukkan booking WA/onsite, mencatat DP dan pelunasan pada booking yang sama.
-- Status pelanggan hanya dapat dibaca dengan token acak rahasia; jadwal publik tidak mengungkap pemesan.
-- Pembayaran manual demo positif, tidak berlebih, tahan pengiriman ulang dan permintaan bersamaan.
-- Booking tanpa pembayaran kedaluwarsa atau dapat dibatalkan; riwayat dipertahankan.
-- Rekap menghitung pembayaran valid berdasarkan tanggal Jakarta, bukan nilai booking.
-- Jalur UI handphone, pengujian API, pengujian konkurensi, build, CI, dan petunjuk staging tersedia.
+Laravel/Next.js/SQLite dipertahankan. Pelanggan tanpa akun memperoleh token privat; pegawai menggunakan session. Pembayaran tetap pencatatan manual demo. Tidak ada uang nyata, bukti upload, gateway, verifikasi tertunda, reschedule, refund/koreksi, role pemilik atau penetapan tidak datang otomatis.
 
-## Aturan sementara
+Tarif v2 untuk database baru: sintetis Rp130.000, vinil Rp160.000, badminton Rp100.000 per jam. Badminton belum dikonfirmasi wawancara. Semua hari 07.00–00.00 WIB, durasi percobaan 1–3 jam. DP Rp50.000 per booking; booking yang dibuat kurang dari 60 menit sebelum mulai hanya penuh. Batas 90 hari dipertahankan; usulan 30 hari belum diterapkan.
 
-Konfigurasi terpusat di `backend/config/lola.php`, tarif awal di seeder lapangan.
+## Aturan dan harga
 
-- Empat lapangan: Futsal Sintetis Rp150.000/jam, Futsal Vinil Rp120.000/jam, Badminton 1 dan 2 Rp50.000/jam. Ini data contoh, bukan tarif Lola.
-- Buka 07.00–23.00 Asia/Jakarta setiap hari. Mulai pada jam bulat, durasi 1–3 jam; booking paling jauh 90 hari.
-- Minimum pembayaran pertama untuk opsi DP: 30% total, dibulatkan ke atas ke rupiah utuh. Opsi penuh memerlukan pembayaran pertama sebesar total.
-- Booking baru `pending`, menahan slot selama 20 menit. Pembayaran pertama valid sebelum tenggat mengubahnya menjadi `confirmed`; tidak ada gateway/uang nyata.
-- Status pembayaran dihitung terpisah: `unpaid`, `partial`, `paid` dari jumlah pembayaran. Pilihan DP/penuh sendiri bukan pembayaran.
-- Pending yang tenggatnya lewat dianggap `expired` langsung pada pembacaan/pemeriksaan konflik, tanpa scheduler. Baris database boleh tetap pending; status efektif tetap expired. Tidak boleh menerima pembayaran lagi.
-- `confirmed` tetap memblokir jadwal. Penyelesaian/no-show belum diotomatisasi.
-- Hanya pegawai dapat membatalkan pending yang belum kedaluwarsa dan belum dibayar. Booking dengan pembayaran ditolak pembatalannya karena refund/koreksi belum dibuat. Tidak ada penghapusan riwayat.
-- Reschedule, refund, koreksi transaksi, pengaturan tarif di UI, penutupan lapangan, peran pemilik terpisah, dan dampak operasional di luar cakupan implementasi ini.
-- Pelanggan menggunakan tautan dengan token di fragment URL; siapa pun yang memperoleh tautan dapat membaca booking tersebut. Jangan membagikan tautan/screenshot token.
+`backend/config/lola.php` menyimpan waktu, DP, durasi dan batas booking. `config/lola_tariffs.php` menyimpan tarif awal serta nilai lama untuk guard updater. Seeder hanya memasukkan lapangan yang belum ada. Update database terisi dilakukan terpisah melalui `lola:rates-v2`: preview, pemilihan ID dan konfirmasi.
 
-## Arsitektur dan batas
+Nilai khusus tidak ditimpa otomatis. Perbandingan angka tidak membuktikan apakah nilai yang kebetulan sama dengan tarif lama merupakan pilihan khusus; operator tetap meninjau ID dengan sengaja. Perubahan setelah preview membatalkan seluruh penerapan. Tidak ada updater tarif pada setup/migration.
 
-Browser → Next.js (tampilan dan proxy `/api`) → Laravel (session, otorisasi, aturan, perhitungan) → SQLite (penyimpanan).
+Tarif/jam, total, payment_option dan initial_due tetap snapshot booking. Booking lama dapat memiliki DP persentase lama; nominalnya tidak dihitung ulang menjadi Rp50.000. Pembayaran lama tidak diubah/disalin. Kolom nullable baru hanya menambah informasi mulai bermain dan jenis catatan baru.
 
-Satu origin browser menghindari kebutuhan CORS lintas origin. Session Laravel memakai cookie HttpOnly, SameSite=Lax; CSRF token diperoleh dari `/api/csrf` dan dikirim pada request perubahan. Cookie Secure wajib di HTTPS staging. Login meregenerasi session, logout membatalkannya. Percobaan login dan request publik dibatasi. Hanya `is_admin=true` yang dapat mengakses endpoint admin; role pemilik belum dibedakan.
+## Waktu dan konsistensi
 
-Token booking dibuat dari 32 byte acak (256 bit), hanya hash SHA-256 disimpan. Token dikirim lewat Authorization saat membaca status, bukan path/query API. Jadwal publik hanya memuat rentang sibuk. Log tidak boleh merekam body, cookie, Authorization, atau fragment tautan.
+Input/jadwal/batas laporan memakai Asia/Jakarta, penyimpanan UTC. close_hour=24 berarti 00.00 hari berikutnya. Bentrok memakai start < end lain dan end > start lain; slot bersebelahan boleh.
 
-Uang adalah integer rupiah. Tarif/jam, tagihan, dan minimum pembayaran disalin ke booking. Waktu booking dan pembayaran disimpan sebagai UTC; input jadwal dan batas rekap menggunakan Asia/Jakarta. Rekap harian/bulanan memakai interval awal inklusif, akhir eksklusif yang dikonversi ke UTC.
+`BusinessClock` membaca waktu UTC saat ini untuk aturan booking. Pengujian browser menyuntikkan waktu terkendali hanya melalui router `tests/Support` yang mengharuskan database temporer; tidak ada endpoint mengubah waktu. Jam session/file/cache tetap nyata agar tes tidak merusak CSRF demi melewati jam jadwal.
 
-Semua perubahan booking/pembayaran menggunakan transaksi SQLite IMMEDIATE: penulis memperoleh kunci sebelum membaca konflik/sisa tagihan. Timeout sibuk dan retry transaksi terbatas; jika tetap sibuk, API mengembalikan 503 dan pengguna dapat mencoba ulang. SQLite mendukung satu penulis pada satu waktu, untuk satu host dengan disk persisten; bukan banyak instance dengan salinan database sendiri.
+Perubahan booking/pembayaran memakai transaksi SQLite IMMEDIATE, dengan PHP 8.4+ yang mendukung perilaku framework tersebut. Kunci penulis diperoleh sebelum memeriksa slot/sisa. Database sibuk mendapat retry terbatas dan respons 503. SQLite untuk satu host/disk persisten, bukan banyak instance dengan salinan masing-masing.
 
-Pembayaran memiliki kunci idempotensi UUID unik global dan hash isi (booking, nominal, metode). Pengiriman ulang identik mengembalikan transaksi yang sama. Kunci sama dengan isi berbeda ditolak 409. Kunci ini dipertahankan UI ketika respons jaringan tidak pasti; perubahan isi memerlukan kunci baru.
+## Hold dan status
 
-## Keputusan lanjutan pengelola
+Pending memperoleh expires_at=min(waktu penyimpanan + 20 menit, waktu mulai). Membuka formulir belum menahan slot. Tenggat dikembalikan bersama instruksi pada respons booking; latensi jaringan tidak mengulang hold. Pending yang habis efektif expired tanpa scheduler. Pembayaran setelah itu ditolak.
 
-Konfirmasi fasilitas, tarif, jam/durasi, DP, tenggat, konfirmasi manual, kewenangan, SOP input WA, pembatalan/no-show/refund, reschedule, dasar laporan, penyimpanan data pribadi, dan penerimaan pengguna. Pemeriksaan agen bukan review independen atau persetujuan stakeholder.
+Pembayaran valid mengonfirmasi booking. Timer pending tidak mengakhiri confirmed, termasuk setelah DP. Reservasi, tagihan dan mulai bermain dipisahkan. Lewatnya jam tidak otomatis berarti hadir, selesai atau tidak datang.
 
-## Catatan kompatibilitas SQLite
+Pembatalan Tahap 1 hanya pending belum dibayar dan belum expired; catatan tetap disimpan. Pembatalan setelah pembayaran dan uang terlambat diperiksa memerlukan Tahap 2, tanpa catatan rekaan/pengambilalihan slot.
 
-PHP 8.4+ diwajibkan karena implementasi SQLiteConnection Laravel hanya memakai mode transaksi IMMEDIATE pada versi tersebut. PHP 8.2 yang dipakai pada percobaan awal tidak memenuhi strategi ini. Composer, CI dan panduan sudah menetapkan PHP 8.4. Ada uji khusus yang memastikan transaksi memperoleh kunci penulis sebelum membaca data.
+## Pembayaran standar dan retry
+
+Server mengembalikan payment_choices dari snapshot/sisa. Belum dibayar dengan opsi DP: DP snapshot atau penuh. Opsi penuh: hanya penuh. Setelah sebagian dibayar: pelunasan sisa. Untuk total tarif khusus ≤DP, booking baru memakai penuh agar tidak melebihi tagihan.
+
+UI tidak menyediakan nominal bebas. Pegawai meninjau referensi, pemesan, lapangan, jadwal, metode dan nominal sebelum konfirmasi. API menolak amount bebas dan menghitung nominal dari jenis pilihan; expected_amount hanya memastikan nominal yang ditinjau masih cocok dengan server.
+
+UUID idempotensi unik global dan hash booking/jenis/expected_amount/metode melindungi retry. Kunci sama/isi sama mengembalikan hasil sebelumnya; isi berbeda ditolak. UI mempertahankan permintaan yang hasilnya belum pasti melalui sessionStorage, termasuk setelah reload, lalu mengikuti sisa terbaru setelah berhasil. Key penyimpanan v2 berbeda dari UI v1; bila ada catatan lama yang hasilnya belum jelas saat upgrade, periksa riwayat dahulu.
+
+Ini tidak mengenali dua input baru sebagai transfer nyata yang sama. Nominal di luar pilihan standar belum didukung: tunda pencatatan demo dan cocokkan bersama pengelola. QRIS/transfer/tunai hanya label metode.
+
+## Mulai bermain
+
+Asumsi demo setelah pengguna menyerahkan pemilihannya: hanya pegawai berwenang yang dapat menandai mulai pada starts_at ≤ sekarang < ends_at, booking confirmed dan sisa nol. Server menegakkannya; UI bukan pengaman utama. started_at/started_by pertama dipertahankan saat retry atau dua pegawai menekan bersamaan. Ini catatan prosedur, bukan kendali akses fisik.
+
+## Keamanan dan laporan
+
+Browser memakai satu origin melalui proxy Next.js ke Laravel. Session HttpOnly/SameSite=Lax; Secure wajib pada HTTPS. CSRF berlaku untuk perubahan; login diregenerasi dan logout membatalkan session. Rate limit login/publik/admin dipertahankan. Semua fungsi admin memakai is_admin=true; role pemilik belum terpisah.
+
+Token booking memakai 32 byte acak, hash SHA-256 disimpan. Authorization untuk API; fragment untuk tautan privat. Jadwal publik tidak memuat identitas/kontak, dan endpoint pelanggan tidak menampilkan ID pegawai internal. Jangan merekam header/body sensitif dalam log.
+
+Uang integer rupiah. Rekap menjumlahkan payments per waktu pencatatan paid_at dengan batas WIB; ini tidak membuktikan waktu transfer bank. Tagihan/penanda bermain tidak menambah penerimaan. Pemisahan received_at/recorded_at dan laporan pengembalian belum dibuat.
+
+## Keputusan berikutnya
+
+[Rancangan Tahap 2](phase-2-design.md) memuat klaim, verifikasi terlambat, transaksi duplikat nyata, keterlambatan/no-show, reschedule, pembatalan/refund/koreksi dan laporan. Seluruh angka/kewenangan yang belum disetujui tetap usulan. Pengujian agen bukan persetujuan pengelola, review independen atau UAT.

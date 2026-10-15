@@ -10,15 +10,14 @@ export default async function Home() {
     <>
       <section className="hero">
         <div>
-          <p className="eyebrow">RUANG UNTUK BERMAIN</p>
+          <p className="eyebrow">LOLA SPORT · FUTSAL & BADMINTON</p>
           <h1>
-            Atur jadwal.
+            Jadwalkan main.
             <br />
-            <em>Mulai permainan.</em>
+            <em>Siapkan tim.</em>
           </h1>
           <p>
-            Pilih lapangan favorit, temukan waktu yang pas, dan simpan tempat
-            untuk tim kamu.
+            Futsal atau badminton. Pilih jadwal, lalu lunasi sebelum bermain.
           </p>
           <div className="hero-stats">
             <span>
@@ -28,7 +27,7 @@ export default async function Home() {
               <strong>02</strong> Lapangan badminton
             </span>
             <span>
-              <strong>WIB</strong> Semua jadwal
+              <strong>07–00</strong> Setiap hari · WIB
             </span>
           </div>
         </div>
@@ -39,13 +38,13 @@ export default async function Home() {
             <span className="goal left" />
             <span className="goal right" />
           </div>
-          <span className="art-caption">YOUR NEXT GAME STARTS HERE ↗</span>
+          <span className="art-caption">PILIH JADWAL. BAYAR. MAIN.</span>
         </div>
       </section>
       <section className="section-heading">
         <div>
           <p className="eyebrow">RESERVASI LAPANGAN</p>
-          <h2>Siapkan permainan berikutnya</h2>
+          <h2>Pilih jadwal tim kamu</h2>
         </div>
         <span className="pill">Tanpa akun pelanggan</span>
       </section>

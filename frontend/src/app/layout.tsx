@@ -16,16 +16,14 @@ export default function RootLayout({
         <div className="demo">Mode demo—tidak memproses uang nyata</div>
         <header>
           <Link href="/" className="brand">
-            <span className="brand-icon">
-              L<span>↗</span>
+            <span className="brand-icon" aria-hidden="true">
+              LS
             </span>{" "}
             LOLA<span className="brand-light">SPORT</span>
           </Link>
           <nav>
             <Link href="/">Reservasi</Link>
-            <Link href="/admin">
-              Area pegawai <span aria-hidden>↗</span>
-            </Link>
+            <Link href="/admin">Pegawai</Link>
           </nav>
         </header>
         <main>{children}</main>
@@ -33,8 +31,8 @@ export default function RootLayout({
           <strong>LOLA SPORT</strong>
           <span>Futsal & badminton · Waktu Indonesia Barat</span>
           <small>
-            Prototipe kelompok · Aturan dan tarif contoh perlu ditinjau
-            pengelola.
+            Prototipe capstone · Kebutuhan terbaru dan asumsi demo perlu
+            ditinjau pengelola.
           </small>
         </footer>
       </body>

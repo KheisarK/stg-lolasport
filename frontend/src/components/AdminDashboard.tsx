@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   api,
@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import BookingForm from "./BookingForm";
 import BookingDetails from "./BookingDetails";
+import PaymentForm from "./PaymentForm";
 
 type Report = {
   total: number;
@@ -22,94 +23,6 @@ type Report = {
   from: string;
   until_exclusive: string;
 };
-function PaymentForm({
-  booking,
-  onSaved,
-}: {
-  booking: Booking;
-  onSaved: (booking: Booking) => void;
-}) {
-  const storageKey = `lola-payment-${booking.id}`;
-  const [restored] = useState(() => {
-    if (typeof window === "undefined") return null;
-    try {
-      return JSON.parse(sessionStorage.getItem(storageKey) || "null") as {
-        amount: number;
-        method: string;
-      } | null;
-    } catch {
-      return null;
-    }
-  });
-  const [amount, setAmount] = useState(
-    restored?.amount ??
-      (booking.paid === 0 ? booking.initial_due : booking.remaining),
-  );
-  const [method, setMethod] = useState(restored?.method ?? "cash");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    try {
-      const previous = JSON.parse(sessionStorage.getItem(storageKey) || "null");
-      const request =
-        previous?.amount === amount && previous?.method === method
-          ? previous
-          : { amount, method, idempotency_key: crypto.randomUUID() };
-      sessionStorage.setItem(storageKey, JSON.stringify(request));
-      const data = await api<{ booking: Booking }>(
-        `/admin/bookings/${booking.id}/payments`,
-        { method: "POST", body: JSON.stringify(request) },
-      );
-      sessionStorage.removeItem(storageKey);
-      onSaved(data.booking);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-  return (
-    <form onSubmit={submit} className="payment-form">
-      <h3>Catat pembayaran manual</h3>
-      <p className="muted">
-        Data contoh saja. Pastikan nominal dan metode sebelum mencatat.
-      </p>
-      <div className="form-row">
-        <label>
-          Nominal (rupiah)
-          <input
-            name="amount"
-            type="number"
-            step={1}
-            min={1}
-            required
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-          />
-        </label>
-        <label>
-          Metode
-          <select value={method} onChange={(e) => setMethod(e.target.value)}>
-            <option value="cash">Tunai</option>
-            <option value="transfer">Transfer</option>
-            <option value="qris">QRIS</option>
-          </select>
-        </label>
-      </div>
-      {error && (
-        <p role="alert" className="error">
-          {error}
-        </p>
-      )}
-      <button className="primary" disabled={loading}>
-        {loading ? "Mencatat…" : "Catat pembayaran demo"}
-      </button>
-    </form>
-  );
-}
 export default function AdminDashboard({ name }: { name: string }) {
   const router = useRouter();
   const [tab, setTab] = useState("schedule");
@@ -127,6 +40,8 @@ export default function AdminDashboard({ name }: { name: string }) {
   const [reportDate, setReportDate] = useState(() => jakartaDate());
   const [period, setPeriod] = useState("day");
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [startBusy, setStartBusy] = useState(false);
+  const details = useRef<HTMLElement>(null);
   const handleError = useCallback(
     (e: unknown) => {
       if (e instanceof ApiError && e.status === 401) {
@@ -151,7 +66,14 @@ export default function AdminDashboard({ name }: { name: string }) {
       .then((data) => {
         if (alive) {
           if (tab === "report") setReport(data);
-          else setBookings(data.bookings);
+          else {
+            setBookings(data.bookings);
+            setSelected((current) =>
+              current
+                ? (data.bookings.find((b) => b.id === current.id) ?? null)
+                : null,
+            );
+          }
           setLoading(false);
           setError("");
         }
@@ -201,10 +123,13 @@ export default function AdminDashboard({ name }: { name: string }) {
           <button
             key={value}
             className={tab === value ? "active" : ""}
+            aria-pressed={tab === value}
             onClick={() => {
-              setTab(value);
-              setSelected(null);
-              setLoading(true);
+              if (tab !== value) {
+                setTab(value);
+                setSelected(null);
+                setLoading(true);
+              }
             }}
           >
             {label}
@@ -258,9 +183,11 @@ export default function AdminDashboard({ name }: { name: string }) {
                 type="date"
                 value={date}
                 onChange={(e) => {
-                  setDate(e.target.value);
-                  setSelected(null);
-                  setLoading(true);
+                  if (date !== e.target.value) {
+                    setDate(e.target.value);
+                    setSelected(null);
+                    setLoading(true);
+                  }
                 }}
               />
             </label>
@@ -269,9 +196,11 @@ export default function AdminDashboard({ name }: { name: string }) {
               <select
                 value={court}
                 onChange={(e) => {
-                  setCourt(e.target.value);
-                  setSelected(null);
-                  setLoading(true);
+                  if (court !== e.target.value) {
+                    setCourt(e.target.value);
+                    setSelected(null);
+                    setLoading(true);
+                  }
                 }}
               >
                 <option value="">Semua lapangan</option>
@@ -299,7 +228,22 @@ export default function AdminDashboard({ name }: { name: string }) {
                   <button
                     className={`booking-row ${selected?.id === b.id ? "selected" : ""}`}
                     key={b.id}
-                    onClick={() => setSelected(b)}
+                    onClick={() => {
+                      setSelected(b);
+                      requestAnimationFrame(() => {
+                        if (window.matchMedia("(max-width: 760px)").matches) {
+                          details.current?.scrollIntoView({
+                            behavior: window.matchMedia(
+                              "(prefers-reduced-motion: reduce)",
+                            ).matches
+                              ? "auto"
+                              : "smooth",
+                            block: "start",
+                          });
+                          details.current?.focus({ preventScroll: true });
+                        }
+                      });
+                    }}
                   >
                     <span className="row-top">
                       <strong>{b.customer_name}</strong>
@@ -319,15 +263,22 @@ export default function AdminDashboard({ name }: { name: string }) {
               )}
             </section>
             {selected ? (
-              <article className="panel">
+              <article
+                className="panel booking-operations"
+                ref={details}
+                tabIndex={-1}
+                aria-label="Rincian booking"
+              >
                 <BookingDetails booking={selected} />
                 {["pending", "confirmed"].includes(selected.status) &&
                   selected.remaining > 0 && (
                     <PaymentForm
                       key={`${selected.id}-${selected.paid}`}
                       booking={selected}
+                      onRefresh={refresh}
                       onSaved={(booking) => {
                         setSelected(booking);
+                        setError("");
                         setNotice(
                           `Pembayaran tercatat. Sisa ${money(booking.remaining)}.`,
                         );
@@ -335,6 +286,41 @@ export default function AdminDashboard({ name }: { name: string }) {
                       }}
                     />
                   )}
+                {selected.status === "confirmed" && !selected.started_at && (
+                  <section className="start-play">
+                    <h3>Mulai bermain</h3>
+                    <p>
+                      Pastikan tagihan lunas dan pelanggan mulai sesuai jadwal.
+                      Tindakan ini mencatat prosedur pegawai; tidak membuka
+                      akses fisik lapangan.
+                    </p>
+                    <button
+                      className="primary full"
+                      disabled={startBusy}
+                      onClick={async () => {
+                        setStartBusy(true);
+                        setError("");
+                        try {
+                          const data = await api<{ booking: Booking }>(
+                            `/admin/bookings/${selected.id}/start`,
+                            { method: "POST" },
+                          );
+                          setSelected(data.booking);
+                          setNotice(
+                            "Mulai bermain tercatat. Waktu dan pegawai tersimpan.",
+                          );
+                          refresh();
+                        } catch (e) {
+                          handleError(e);
+                        } finally {
+                          setStartBusy(false);
+                        }
+                      }}
+                    >
+                      {startBusy ? "Mencatat mulai…" : "Tandai mulai bermain"}
+                    </button>
+                  </section>
+                )}
                 {selected.status === "pending" && selected.paid === 0 && (
                   <button
                     className="danger spaced"

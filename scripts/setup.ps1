@@ -33,6 +33,7 @@ if ($LASTEXITCODE -ne 0 -or $lolaNodeVersion -notmatch '^v(22|23|24)\.') {
 
 Push-Location -LiteralPath $lolaRoot
 try {
+    Invoke-LolaTool -Executable $lolaPhp -Arguments @((Join-Path $lolaRoot 'scripts/check-runtime.php'))
     Set-Location -LiteralPath (Join-Path $lolaRoot 'backend')
     Invoke-LolaTool -Executable $lolaComposer -Arguments @('install', '--no-interaction', '--prefer-dist')
     $lolaEnv = Join-Path $lolaRoot 'backend/.env'

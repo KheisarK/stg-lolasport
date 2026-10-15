@@ -2,7 +2,7 @@
 set -euo pipefail
 LOLA_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 if [[ -d /workspace/lola-tools/bin ]]; then export PATH="/workspace/lola-tools/bin:$PATH"; fi
-node --test "$LOLA_ROOT/scripts/tests/process.test.mjs"
+node --test "$LOLA_ROOT/scripts/tests/process.test.mjs" "$LOLA_ROOT/scripts/tests/runtime.test.mjs"
 cd "$LOLA_ROOT/backend"
 composer validate --strict
 php vendor/bin/pint --test

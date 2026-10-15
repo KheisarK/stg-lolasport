@@ -1,4 +1,11 @@
-import { money, dateTime, time, statusLabels, type Booking } from "@/lib/api";
+import {
+  money,
+  dateTime,
+  schedule,
+  statusLabels,
+  type Booking,
+} from "@/lib/api";
+import HoldNotice from "./HoldNotice";
 
 export default function BookingDetails({ booking }: { booking: Booking }) {
   return (
@@ -12,9 +19,7 @@ export default function BookingDetails({ booking }: { booking: Booking }) {
           {statusLabels[booking.status]}
         </span>
       </div>
-      <p>
-        {dateTime(booking.starts_at)}–{time(booking.ends_at)} WIB
-      </p>
+      <p>{schedule(booking.starts_at, booking.ends_at)}</p>
       <dl className="detail-list">
         <div>
           <dt>Pemesan</dt>
@@ -43,9 +48,36 @@ export default function BookingDetails({ booking }: { booking: Booking }) {
       </dl>
       {booking.status === "pending" && (
         <p className="notice">
-          Pembayaran pertama minimum {money(booking.initial_due)} sebelum{" "}
+          Pembayaran awal {money(booking.initial_due)} sebelum{" "}
           {dateTime(booking.expires_at)} WIB. Hubungi pegawai untuk pencatatan
           demo. Jangan transfer uang nyata.
+        </p>
+      )}
+      {booking.status === "pending" && (
+        <HoldNotice
+          key={booking.server_now}
+          deadline={booking.expires_at}
+          serverNow={booking.server_now}
+        />
+      )}
+      {booking.status === "pending" && (
+        <p className="field-help">
+          Bukti pembayaran dan antrean verifikasi belum tersedia. Pembayaran
+          yang masuk tetapi terlambat diperiksa belum ditangani Tahap 1.
+        </p>
+      )}
+      {booking.status === "confirmed" && !booking.started_at && (
+        <p className="notice">
+          {booking.remaining
+            ? "Lunasi sisa tagihan sebelum bermain."
+            : "Tagihan lunas. Pegawai mencatat mulai bermain pada jam booking."}{" "}
+          Booking terkonfirmasi tidak kedaluwarsa karena timer DP.
+        </p>
+      )}
+      {booking.started_at && (
+        <p className="success" role="status">
+          Mulai bermain tercatat: {dateTime(booking.started_at)} WIB
+          {booking.started_by ? ` · Pegawai #${booking.started_by}` : ""}.
         </p>
       )}
       {booking.status === "expired" && (
@@ -64,6 +96,15 @@ export default function BookingDetails({ booking }: { booking: Booking }) {
             <li key={p.id}>
               <div>
                 <strong>{money(p.amount)}</strong>
+                <small>
+                  {p.kind === "dp"
+                    ? "DP"
+                    : p.kind === "full"
+                      ? "Pembayaran penuh"
+                      : p.kind === "settlement"
+                        ? "Pelunasan"
+                        : "Catatan awal"}
+                </small>
                 <small>
                   {dateTime(p.paid_at)} WIB ·{" "}
                   {p.method === "cash"

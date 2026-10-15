@@ -27,6 +27,7 @@ Route::prefix('api')->group(function () {
         Route::post('/bookings', [LolaController::class, 'adminCreate']);
         Route::post('/bookings/{id}/payments', [LolaController::class, 'payment'])->whereNumber('id');
         Route::post('/bookings/{id}/cancel', [LolaController::class, 'cancel'])->whereNumber('id');
+        Route::post('/bookings/{id}/start', [LolaController::class, 'start'])->whereNumber('id');
         Route::get('/reports', [LolaController::class, 'report']);
     });
 });

@@ -54,3 +54,15 @@ Staging adalah lingkungan latihan/evaluasi yang dipisahkan dari operasional. Lih
 5. Buat issue yang menyebut kebutuhan PRD, langkah reproduksi, hasil harapan/aktual, dan bukti tanpa token/kredensial.
 
 Untuk proposal Waterfall, bedakan keluaran tahap yang sudah dibuat dengan kegiatan validasi kebutuhan, evaluasi pengguna, dan keputusan penerapan yang masih perlu dilaksanakan kelompok.
+
+## Pembaruan Tahap 1 v2 — satu lapis demi satu lapis
+
+1. **Kebutuhan:** `requirements-v2.md` memberi ID, asal dan status informasi. Tarif futsal dari pembahasan melalui pengguna dibedakan dari pilihan sementara badminton dan batas 60 menit. PRD menerima addendum, tanpa mengubah proposal atau memberi persetujuan bisnis.
+2. **Data:** migration hanya menambah kolom nullable. Seeder mengisi data baru; command tarif menampilkan preview dan hanya memperbarui ID yang ditinjau dengan guard nilai lama. Harga/DP booking adalah snapshot; memperbarui lapangan tidak mengubah piutang lama. `LegacyUpgradeTest` memeriksa file SQLite sementara.
+3. **Aturan server:** jam tutup 24 berarti awal tanggal berikutnya. DP, syarat mendadak dan deadline dihitung pada transaksi server. `BusinessClock` menyediakan waktu aturan yang bisa diuji tanpa mengubah jam laptop; tidak menambah pengubah waktu pada aplikasi biasa.
+4. **Pembayaran:** frontend memilih jenis; server menentukan nominal. `expected_amount` mendeteksi tampilan lama, bukan menentukan uang diterima. Pelunasan selalu sisa. Kunci idempotensi mengidentifikasi request yang sama, bukan transfer nyata yang sama.
+5. **Antarmuka:** `BookingForm` memberi tanggal cepat/penjelasan DP, `PaymentForm` memberi tinjauan, dan `BookingDetails` memisahkan reservasi, pembayaran dan mulai bermain. Rincian ponsel difokuskan setelah pemilihan; referensi dan batas pemeriksaan ada di `design-notes-v2.md`.
+6. **Prosedur pegawai:** mulai bermain memeriksa tagihan dan waktu, lalu menyimpan pelaku/waktu sekali. Jam lewat bukan kehadiran; catatan tidak mengendalikan akses fisik.
+7. **Verifikasi/setup:** CI Windows awal gagal karena fileinfo tidak aktif. Perbaikannya mengaktifkan ekstensi dan memeriksa runtime sebelum Composer. Browser memakai jam bisnis/database terpisah, sementara CSRF/session tetap diuji.
+
+Latihan: pesan tiga jam dan bandingkan DP dengan satu jam; coba 23.00 satu jam versus dua jam; jalankan preview tarif tanpa apply; setelah DP klik mulai, lalu lunasi dan tandai mulai pada rentang jadwal. Untuk alur otomatis tanpa menunggu, gunakan E2E terisolasi. Tahap 2 tetap rancangan: jangan memasukkan angka kandidat ke config sebelum keputusan dicatat.
