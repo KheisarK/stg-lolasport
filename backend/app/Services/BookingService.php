@@ -146,6 +146,7 @@ class BookingService
             $amount = $choice['amount'];
             abort_unless($amount === (int) $data['expected_amount'], 409, 'Nominal konfirmasi tidak sesuai tagihan server. Muat ulang sebelum mencatat.');
             $now = $this->clock->now();
+            abort_if($booking['status'] === 'pending' && CarbonImmutable::parse($booking['expires_at'])->lte($now), 409, 'Tenggat pembayaran terlewati sebelum pencatatan selesai. Booking tidak dapat dikonfirmasi.');
             $paymentId = DB::table('payments')->insertGetId([
                 'booking_id' => $id, 'kind' => $data['kind'], 'amount' => $amount, 'method' => $data['method'],
                 'idempotency_key' => $data['idempotency_key'], 'request_hash' => $hash,

@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use App\Support\BusinessClock;
 use Carbon\CarbonImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Routing\Middleware\ThrottleRequests;
@@ -175,5 +176,26 @@ class RulesV2Test extends TestCase
         $date = CarbonImmutable::now('Asia/Jakarta')->addDays(91)->toDateString();
         $this->postJson('/api/bookings', $this->input(['date' => $date]))->assertUnprocessable();
         $this->assertDatabaseCount('bookings', 2);
+    }
+
+    public function test_payment_cannot_cross_the_deadline_between_read_and_recording(): void
+    {
+        $id = $this->postJson('/api/bookings', $this->input())->assertCreated()->json('booking.id');
+        $this->actingAs(User::factory()->create(['is_admin' => true]));
+        $this->app->instance(BusinessClock::class, new class extends BusinessClock
+        {
+            private bool $sampled = false;
+
+            public function now(): CarbonImmutable
+            {
+                $time = $this->sampled ? '2026-10-16 09:20:00' : '2026-10-16 09:19:59';
+                $this->sampled = true;
+
+                return CarbonImmutable::parse($time, 'Asia/Jakarta')->utc();
+            }
+        });
+        $this->pay($id, 'dp', 50000)->assertConflict();
+        $this->assertDatabaseCount('payments', 0);
+        $this->assertDatabaseHas('bookings', ['id' => $id, 'status' => 'pending']);
     }
 }

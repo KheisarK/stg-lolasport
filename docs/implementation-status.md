@@ -20,7 +20,7 @@ Prototipe eksplorasi capstone, belum sistem operasional, persetujuan pengelola, 
 
 | Pemeriksaan | Hasil dan batas |
 | --- | --- |
-| Backend PHP 8.4 | **35 tes, 354 assertions lulus**; `php artisan test` |
+| Backend PHP 8.4 | **36 tes, 358 assertions lulus**; `php artisan test` |
 | Runtime/launcher Node | **7 tes lulus**; termasuk path spasi/backtick dan ekstensi sengaja tidak dimuat pada konfigurasi PHP temporer |
 | Composer/Pint/ESLint/typecheck/build | Lulus melalui `bash scripts/check.sh`; build produksi juga dijalankan E2E setelah perubahan tampilan terakhir |
 | Browser build produksi lokal | **6 skenario lulus**, desktop/Pixel 7: booking–DP–penolakan mulai–pelunasan–mulai, retry respons hilang setelah reload, rekap, onsite/pembatalan, mendadak, tengah malam, 320px dan target utama ≥48px |
@@ -36,7 +36,9 @@ Waktu bisnis pada browser tests disuntikkan lewat router privat dalam `tests/Sup
 
 CI awal yang diverifikasi: [run 38141742834](https://github.com/kheisarkc/stg-lolasport/actions/runs/38141742834), commit 0b2190d. Linux berhasil, Windows gagal pada setup. Anotasi resmi mencatat league/flysystem-local dan league/mime-type-detection membutuhkan **ext-fileinfo** yang belum aktif pada `C:\tools\php\php.ini`. Arsip log penuh ditolak proxy, tetapi anotasi menyediakan sebab spesifik tersebut.
 
-Perbaikan v2 mengaktifkan fileinfo beserta ekstensi lockfile secara eksplisit pada kedua runner, serta preflight sebelum Composer. Tidak ada composer update atau pengabaian platform. Status run v2 akan dicatat setelah branch dikirim dan hasil remote diperiksa; jangan menyamakan lulus lokal dengan CI Windows lulus.
+Perbaikan v2 mengaktifkan fileinfo beserta ekstensi lockfile secara eksplisit pada kedua runner, serta preflight sebelum Composer. Tidak ada composer update atau pengabaian platform. Bukti remote v2 yang diperiksa: [run 38789406332](https://github.com/kheisarkc/stg-lolasport/actions/runs/38789406332), source commit `705db288b784cf3313b7f4bd7c0bdf0ab5e409ff`, **checks Linux dan windows berhasil**, termasuk setup PowerShell native, backend, runtime/launcher dan browser. Ini bukti runner Windows, bukan laptop pengguna.
+
+Pemeriksaan akhir menambah pengaman jika tenggat terlewati antara pembacaan booking dan pencatatan pembayaran. Tes tambahan gagal sebelum perbaikan dan lulus sesudahnya, sehingga jumlah lokal menjadi 36/358. Untuk commit sesudah 705db28, cocokkan SHA dan hasil pada [Actions branch v2](https://github.com/kheisarkc/stg-lolasport/actions?query=branch%3Afeat%2Flola-rules-v2); hasil commit akhir dilaporkan pada serah terima/PR. Hasil satu source commit tidak otomatis membuktikan revisi berikutnya.
 
 ## Data dan penggunaan yang belum dilakukan
 

@@ -29,6 +29,7 @@ Untuk pembaruan v2, periksa perubahan lokal lalu ambil branch pembaruan dari roo
 
 ```powershell
 git status --short
+git remote set-url origin https://github.com/kheisarkc/stg-lolasport.git
 git fetch origin
 git switch feat/lola-rules-v2
 git pull --ff-only
